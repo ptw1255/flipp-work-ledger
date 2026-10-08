@@ -31,13 +31,19 @@ function renderDetail(task){
 function render(){
  const visible=visibleTasks();if(!visible.some(t=>t.id===selectedId))selectedId=visible[0]?.id;
   if(document.body.dataset.variant==="a"){
-    list.innerHTML=visible.map(task=>{
+    const states=["Queued","Running","Waiting externally","Blocked","Completed","Canceled"];
+    const slug=state=>state.toLowerCase().replaceAll(" ","-");
+    const card=task=>{
       const c=copy[task.id];
       const times={task_synth_104:"Overdue",task_synth_103:"No deadline",task_synth_101:"Due 14:14",task_synth_107:"Review 15:00",task_synth_105:"When available",task_synth_099:"Completed 13:18"};
-      return `<li class="action-card"><div class="card-top"><span class="task-status ${c.lens==="attention"?"attention":""}">${escape(c.status)}</span><span class="card-time">${times[task.id]}</span></div><h2>${escape(c.title)}</h2><p class="card-next">${escape(c.next)}</p><details class="card-disclosure"><summary>Details</summary><p class="card-update">${escape(c.update)}</p><p class="human-note">${escape(c.note)}</p><div class="evidence">${escape(task.evidence)}<small>Evidence observed ${escape(task.observedAt)} · view updated 14:32 UTC</small></div><p class="card-scope"><strong>Scope</strong> ${escape(task.scope)}</p><ol class="history" aria-label="Task history">${task.chronology.map(entry=>`<li><time>${escape(entry[0])}</time><div>${escape(entry[1])}<small>${escape(entry[2])}</small></div></li>`).join("")}</ol></details></li>`;
+      return `<li class="action-card"><div class="card-top"><span class="task-status ${c.lens==="attention"?"attention":""}">${escape(c.status)}</span></div><h3>${escape(c.title)}</h3><p class="card-next">${escape(c.next)}</p><p class="card-time">${times[task.id]}${times[task.id].match(/[0-9]/)?" UTC":""}</p><details class="card-disclosure"><summary>Details<span class="sr-only"> for ${escape(c.title)}</span></summary><p class="card-update">${escape(c.update)}</p><p class="human-note">${escape(c.note)}</p><div class="evidence">${escape(task.evidence)}<small>Evidence observed ${escape(task.observedAt)} · view updated 14:32 UTC</small></div><p class="card-scope"><strong>Scope</strong> ${escape(task.scope)}</p><ol class="history" aria-label="Task history">${task.chronology.map(entry=>`<li><time>${escape(entry[0])}</time><div>${escape(entry[1])}<small>${escape(entry[2])}</small></div></li>`).join("")}</ol></details></li>`;
+    };
+    list.innerHTML=states.map(state=>{
+      const members=visible.filter(task=>task.state===state);
+      return `<section class="board-column" id="column-${slug(state)}" aria-labelledby="heading-${slug(state)}"><div class="column-heading"><h2 id="heading-${slug(state)}" tabindex="-1">${state}</h2><span aria-label="${members.length} tasks">${members.length}</span></div><ol class="column-cards">${members.map(card).join("")}</ol>${members.length?"":'<p class="column-empty">No tasks in this view</p>'}</section>`;
     }).join("");
     document.querySelector("#empty").hidden=visible.length>0;
-    document.querySelector("#active-scope").textContent=`${visible.length} ${lens==="all"?"tasks":lens==="attention"?"need attention":"waiting"}${search.value.trim()?" · search results":""}`;
+    document.querySelector("#active-scope").textContent=`${visible.length} of ${tasks.length} tasks · ${visible.filter(task=>copy[task.id].lens==="attention").length} need attention${search.value.trim()?" · search results":""}`;
     document.querySelectorAll("[data-lens]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lens===lens)));
     return;
   }
@@ -51,4 +57,8 @@ function render(){
 document.querySelectorAll("[data-lens]").forEach(b=>b.addEventListener("click",()=>{lens=b.dataset.lens;render();}));
 search.addEventListener("input",render);
 document.querySelector("#reset").addEventListener("click",()=>{lens=document.body.dataset.variant==="b"?"attention":"all";search.value="";render();search.focus();});
+document.querySelector("#state-jump")?.addEventListener("change",event=>{
+  const target=document.querySelector("#heading-"+event.target.value);
+  if(target){target.scrollIntoView({block:"start"});target.focus({preventScroll:true});}
+});
 render();
