@@ -186,6 +186,8 @@ The query layer builds one bounded, deterministic `TaskPresentation` projection 
 
 The same task version and catalog version produce the same semantic view model. A renderer may change layout across viewport sizes, but it cannot relabel state, discard an active blocker, promote stale evidence, infer connectivity, or manufacture a completion. If a projection is stale, the view declares its source task version and projection time.
 
+Expose separate authenticated query contracts for agents and humans. The agent coordination payload includes revisions, approval references, claims and ownership, dependency state, due/check times, action constraints, evidence references, delivery health, and audit sequence. Unknown fields remain explicitly unknown. The human projection contains a concise title, truthful status summary, next step, material warning, and optional evidence details. Both derive from the same canonical record. Do not ship the private agent payload to the browser or embed it in A2UI data or action context. Public prototype fixtures remain synthetic.
+
 The deterministic surface-selection and state-progression policy is defined in [Agent-driven UI experience](AGENT_UI_EXPERIENCE.md). It chooses among stable Needs attention, Progressing, and Waiting lenses from canonical fields; it does not give a model open-ended authority to decide urgency or rewrite the page structure.
 
 ### Proposed A2UI adapter

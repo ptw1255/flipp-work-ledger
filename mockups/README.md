@@ -2,8 +2,10 @@
 
 These static prototypes compare two read-only interface directions using the same synthetic task data:
 
-- [Variant A: compact ledger](variant-a-ledger.html) — a dense task list with adjacent task details.
-- [Variant B: attention and chronology](variant-b-attention.html) — an exception-first queue with a chronological work view.
+- [Variant A: action cards](variant-a-ledger.html) — the selected direction: one quiet card per action, with explanation and evidence in Details.
+- [Variant B: attention](variant-b-attention.html) — a comparison direction with a short queue and selected update.
+
+The human surface shows only the information needed to understand work and its next step. [The synthetic agent payload example](agent-payload.example.json) retains coordination fields for an authorized agent query. Hidden UI is not access control: a real implementation must keep that payload server-side and enforce owner-scoped authorization.
 
 They are design artifacts only. They are not connected to the ledger, authentication, MCP Events, an assistant, Cloudflare, or A2UI. Controls change presentation state only; there are no approve, cancel, retry, execute, or scope-mutation actions.
 

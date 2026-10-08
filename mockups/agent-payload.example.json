@@ -1,0 +1,62 @@
+{
+  "schema_version": "agent-coordination.example.v1",
+  "synthetic": true,
+  "task_id": "task_synth_107",
+  "state": "Canceled",
+  "scope": {
+    "summary": "Read-only reconciliation; no new publication or compensating action",
+    "revision": null,
+    "approval_reference": null
+  },
+  "completion": {
+    "revision": null,
+    "condition": "Record whether the original synthetic publication was accepted"
+  },
+  "ownership": {
+    "principal": null,
+    "claim": null,
+    "future_claims_allowed": false
+  },
+  "next_action": {
+    "kind": "read_only_reconciliation",
+    "summary": "Check the original result without restarting execution"
+  },
+  "constraints": {
+    "external_write_allowed": false,
+    "retry_original_action_allowed": false
+  },
+  "timing": {
+    "canceled_at": "2026-10-08T14:22:00Z",
+    "last_check_at": "2026-10-08T14:22:00Z",
+    "review_due_at": "2026-10-08T15:00:00Z"
+  },
+  "evidence": [
+    {
+      "kind": "synthetic_observation",
+      "observed_at": "2026-10-08T14:21:00Z",
+      "outcome": "unknown",
+      "summary": "Request timed out after possible acceptance",
+      "reference": null
+    }
+  ],
+  "dependencies": [],
+  "delivery_health": "unknown",
+  "task_revision": null,
+  "audit_sequence": null,
+  "projected_at": "2026-10-08T14:32:00Z",
+  "missing_fields": [
+    "scope.revision",
+    "scope.approval_reference",
+    "completion.revision",
+    "ownership.principal",
+    "task_revision",
+    "audit_sequence",
+    "delivery_health"
+  ],
+  "human_projection": {
+    "title": "Confirm publication outcome",
+    "status": "Canceled · outcome unknown",
+    "update": "Work is canceled. The original publication may still have gone through.",
+    "next_step": "Agent: check the original result."
+  }
+}

@@ -62,22 +62,23 @@ Proposed pilot guardrails are one owner, one primary assistant identity, at most
 
 ## Owner experience
 
-The default view groups work into Queued, Running, Waiting externally, Blocked, Completed, and Canceled. Each row shows the outcome, responsible actor, deadline when present, last check, and next action. Sorting should make overdue checks and unresolved blockers easy to find without inventing a new urgency level for every task.
+The default view presents one compact card per action. Its face shows a title, plain-language state or attention cue, one next step, and the relevant time. Canonical state remains unchanged in the ledger. Sorting makes overdue checks and unresolved blockers easy to find without invented urgency.
 
-A task detail view shows its scope, approval reference, completion condition, current status evidence, upcoming check, and chronological activity. It distinguishes the age of the underlying evidence from the last time the page refreshed. Missing evidence or a missed check must be visible in text, not color alone. The interface should work on a narrow screen and support keyboard navigation.
+Details expand within the card to show a short explanation, scope, evidence, and history. Evidence observation time is separate from view refresh time. Technical IDs, versions, leases, and approval references belong in the authenticated agent payload. Blockers, missed checks, and uncertain outcomes remain visible on the card face. The interface works on a narrow screen and supports keyboard navigation.
 
 The initial interface is read-only apart from navigation and filtering. Requests to change scope, pause work, resume work, or cancel go through chat. A conversation link may be shown only when a supported, verified link exists.
 
 ### Interface requirements
 
 - Use a compact, neutral, evidence-first layout rather than oversized metric cards or decorative charts. A restrained orange accent may identify selection or attention, but color is never the only state cue.
-- Make the default view useful without interaction. Show canonical state, next action, relevant deadline or next check, and the specific exception that needs attention.
-- Keep task scope, evidence provenance, and status history close to the selected task. Distinguish when evidence was observed from when the page or projection was refreshed.
+- Make each card useful without interaction: title, truthful state summary, one next step, relevant time, and any material exception.
+- Put the explanation, task scope, evidence provenance, and history in optional Details. Keep technical coordination metadata in the authenticated agent payload. Distinguish evidence observation time from view refresh time; material uncertainty and stale projection warnings stay visible without disclosure.
 - Preserve the canonical state names: Queued, Running, Waiting externally, Blocked, Completed, and Canceled. Show stale or expired claims, missed checks, delivery failures, and uncertain outcomes as explicit qualifiers rather than inventing new canonical states.
 - A canceled task with an uncertain external outcome remains Canceled. The interface may show its read-only reconciliation status but cannot imply that work resumed or the external action was reversed.
 - Filters disclose their active scope and have a clear reset. Empty results explain which filters are active. Navigation, filtering, search, and detail selection work with a keyboard and at mobile widths.
 - V1 is read-only apart from presentation controls. Do not include approve, complete, cancel, retry, execute, scope-change, credential, or environment-selection controls.
 - Every rendered status comes from an authenticated canonical projection or deterministic view model. Presentation generation cannot invent progress, hide a blocker, upgrade evidence, or turn callback receipt into completion.
+- Provide a separate authenticated agent coordination payload with revisions, claims, scope, constraints, evidence, timing, and recovery context. The human UI receives a smaller projection; private agent payloads are never embedded in browser source or A2UI action context.
 
 The initial design exploration compares two views using identical synthetic state semantics: a compact ledger list with adjacent details, and a focused attention queue with chronological work history. The prototypes are review artifacts, not production UI or evidence that A2UI is integrated.
 
