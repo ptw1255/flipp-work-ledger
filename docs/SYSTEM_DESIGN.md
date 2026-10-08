@@ -1,10 +1,12 @@
 # flipp Work Ledger system design
 
-Version 0.1 · 8 October 2026 · For review
+Version 0.2 · 8 October 2026 · For review
 
 ## Status and intent
 
 This document proposes a system design for the MVP described in the [PRD](PRD.md). It is not implementation, deployment, spending approval, or proof that the target assistant client supports the complete flow. All examples are synthetic.
+
+The controlling release criteria are the stable IDs in the [constraint acceptance matrix](CONSTRAINTS.md). All are unimplemented and unverified at this design stage.
 
 The design is deliberately a modular monolith: one Cloudflare Worker, one canonical SQLite-backed Durable Object for the initial owner, and internal modules with stable contracts. The assistant—not the ledger—chooses and operates cloud tools, a Mac environment, or other authorized integrations.
 
@@ -33,6 +35,26 @@ These values bound design and synthetic load tests; they are not approved capaci
 - no hard guarantee for how quickly the assistant starts after an attention event.
 
 Validate lease and renewal timing against real agent behavior during the connectivity pilot. Revisit limits, cost, storage, and reconciliation duration before admitting private task data.
+
+## Constraint traceability
+
+| Constraint | Primary design mechanism | Required proof in this document |
+| --- | --- | --- |
+| [C01](CONSTRAINTS.md#c01) | Component boundary, module allowlist, narrow MCP surface | Contract and integration boundary tests |
+| [C02](CONSTRAINTS.md#c02) | Minimal entities, payloads, redacted logs, retention | Security/privacy scans and deletion tests |
+| [C03](CONSTRAINTS.md#c03) | Separate ledger policy and assistant action-time checks | Authority, injection, provenance, and completion tests |
+| [C04](CONSTRAINTS.md#c04) | Authenticated principals and owner-derived routing | Isolation, revocation, and identity-override tests |
+| [C05](CONSTRAINTS.md#c05) | One transactional Durable Object store | Crash-boundary and projection-staleness tests |
+| [C06](CONSTRAINTS.md#c06) | Versions, receipts, leases, fencing generations | Property, concurrency, replay, and stale-writer tests |
+| [C07](CONSTRAINTS.md#c07) | Cancellation revisions and read-only reconciliation | Race and ambiguous-external-result tests |
+| [C08](CONSTRAINTS.md#c08) | Scheduled jobs, alarms, reconciliation, visible diagnostics | Crash, exhaustion, poison, and repair tests |
+| [C09](CONSTRAINTS.md#c09) | Minimal generated attention event and signed outbox delivery | Schema, duplicate, ordering, signature, and loop tests |
+| [C10](CONSTRAINTS.md#c10) | Real-account synthetic connectivity gate | Signed event to intended conversation to current-task fetch |
+| [C11](CONSTRAINTS.md#c11) | Restore quarantine plus external journal or verified manifest | Delete, restore, revoke, and no-resurrection tests |
+| [C12](CONSTRAINTS.md#c12) | Modular monolith and versioned internal contracts | Dependency, compatibility, and migration tests |
+| [C13](CONSTRAINTS.md#c13) | Revision-aware dependencies, provenance, joins, and fenced handoffs | Cycle, delegation, join, cancellation, and revocation tests |
+| [C14](CONSTRAINTS.md#c14) | Narrow command allowlist and stable receipts and errors | Contract snapshots, malformed/unknown version, receipt tests |
+| [C15](CONSTRAINTS.md#c15) | Proposed envelope, metrics, and owner-approved cap | Current pricing review, load test, and explicit approval |
 
 ## Context and component design
 
@@ -269,38 +291,33 @@ The cost posture is to minimize periodic work, batch due items, keep one canonic
 
 ### Domain and contract tests
 
-- Exhaustively test allowed and rejected state transitions.
-- Use property-based tests for transition invariants, dependency acyclicity, revision-aware completion, and idempotent receipts.
-- Race two claims and prove one active fenced owner.
-- Replay every mutation with identical and conflicting idempotency inputs.
-- Attempt writes with stale record, scope, cancellation, claim, and contract versions.
-- Verify completion, parent joins, and future delegation never widen authority.
-- Run forward migration, compatibility-window, rollback or forward-repair, and unknown-writer tests.
+- **[C01](CONSTRAINTS.md#c01), [C06](CONSTRAINTS.md#c06), [C14](CONSTRAINTS.md#c14):** Exhaustively test allowed and rejected state transitions, the narrow command allowlist, and absence of execution or machine-control tools.
+- **[C06](CONSTRAINTS.md#c06), [C13](CONSTRAINTS.md#c13), [C14](CONSTRAINTS.md#c14):** Use property-based tests for transition invariants, dependency acyclicity, revision-aware completion, and idempotent receipts.
+- **[C06](CONSTRAINTS.md#c06):** Race two claims and prove one active fenced owner; replay every mutation with identical and conflicting idempotency inputs.
+- **[C03](CONSTRAINTS.md#c03), [C06](CONSTRAINTS.md#c06), [C14](CONSTRAINTS.md#c14):** Attempt writes with stale record, scope, completion, cancellation, claim, and contract revisions.
+- **[C03](CONSTRAINTS.md#c03), [C13](CONSTRAINTS.md#c13):** Verify completion, parent joins, and future delegation never widen authority.
+- **[C05](CONSTRAINTS.md#c05), [C12](CONSTRAINTS.md#c12), [C14](CONSTRAINTS.md#c14):** Run transactional-boundary, projection-staleness, forward-migration, compatibility-window, rollback or forward-repair, and unknown-writer tests.
 
 ### Scheduling and recovery tests
 
-- Fire the same alarm repeatedly and out of order.
-- Crash before and after each transactional boundary.
-- Exhaust alarm and delivery retries, then prove Cron reconciliation surfaces and repairs only eligible ledger work.
-- Exercise duplicate, out-of-order, expired-subscription, and poison delivery cases without task-state corruption or unbounded retries.
-- Cross daylight-saving gaps and folds while preserving the recorded local intent.
-- Cancel during claim, delivery, callback receipt, and uncertain external outcome.
-- Prove an expired claim is not treated as proof that an external action failed, and an unknown external result blocks blind side-effect retry.
-- Restore a backup and prove canceled, deleted, and revoked work does not resume.
-- Test the proposed pilot limits and a bounded overload response without asserting a production performance target.
+- **[C06](CONSTRAINTS.md#c06), [C08](CONSTRAINTS.md#c08):** Fire the same alarm repeatedly and out of order; crash before and after each transactional boundary.
+- **[C08](CONSTRAINTS.md#c08):** Exhaust alarm and delivery retries, then prove Cron reconciliation surfaces and repairs only eligible ledger work.
+- **[C06](CONSTRAINTS.md#c06), [C08](CONSTRAINTS.md#c08), [C09](CONSTRAINTS.md#c09):** Exercise duplicate, out-of-order, expired-subscription, and poison delivery cases without task-state corruption or unbounded retries.
+- **[C08](CONSTRAINTS.md#c08):** Cross daylight-saving gaps and folds while preserving the recorded local intent.
+- **[C07](CONSTRAINTS.md#c07):** Cancel during claim, delivery, callback receipt, and uncertain external outcome; prove an expired claim is not proof that an external action failed and an unknown result blocks blind retry.
+- **[C11](CONSTRAINTS.md#c11):** Restore a backup and prove canceled, deleted, and revoked work does not resume.
+- **[C15](CONSTRAINTS.md#c15):** Test the proposed pilot limits and a bounded overload response without asserting a production performance target.
 
 ### Security and privacy tests
 
-- Reject wrong-owner, anonymous, revoked, over-scoped, and enumeration attempts.
-- Reject callback redirects and private or local network destinations.
-- Verify secrets and private source content are absent from records, logs, errors, events, public assets, and fixtures.
-- Verify authenticated actor and owner provenance cannot be overridden by request fields.
-- Test signature verification, replay windows, key rotation, subscription expiry, and rate limits.
-- Inject instructions into task text and event data and verify they cannot change policy or tool scope.
+- **[C03](CONSTRAINTS.md#c03), [C04](CONSTRAINTS.md#c04):** Reject wrong-owner, anonymous, revoked, over-scoped, enumeration, and caller-identity override attempts.
+- **[C09](CONSTRAINTS.md#c09):** Reject callback redirects and private or local network destinations; test signatures, replay windows, key rotation, subscription expiry, and rate limits.
+- **[C02](CONSTRAINTS.md#c02):** Verify secrets and private source content are absent from records, logs, errors, events, public assets, and fixtures.
+- **[C03](CONSTRAINTS.md#c03), [C09](CONSTRAINTS.md#c09):** Inject instructions into task text and event data and verify they cannot change policy or tool scope.
 
 ### Synthetic connectivity gate
 
-Before building the full application, prove with real account authentication and synthetic task data that the intended client can connect to a private remote MCP server, expose these ledger tools and MCP Events, create and refresh a subscription, verify a signed callback, deliver `task.needs_attention` into the intended conversation, resume that assistant context, fetch the correct current task, and stop after unsubscribe or revocation. Repeat after reconnect and server restart.
+**[C04](CONSTRAINTS.md#c04), [C09](CONSTRAINTS.md#c09), [C10](CONSTRAINTS.md#c10):** Before building the full application, prove with real account authentication and synthetic task data that the intended client can connect to a private remote MCP server, expose these ledger tools and MCP Events, create and refresh a subscription, verify a signed callback, deliver `task.needs_attention` into the intended conversation, resume that assistant context, fetch the correct current task, and stop after unsubscribe or revocation. Repeat after reconnect and server restart.
 
 This gate is not passed by documentation, a local inspector, or a callback `2xx`. Failure stops the full build and returns the architecture for review.
 

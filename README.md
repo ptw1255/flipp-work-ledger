@@ -10,6 +10,8 @@ Planning and product review. This repository currently documents the proposed MV
 
 Start with the [product requirements document](docs/PRD.md).
 
+The [constraint acceptance matrix](docs/CONSTRAINTS.md) assigns stable IDs to the product boundaries and defines how each one becomes enforceable and testable.
+
 The proposed technical shape, contracts, recovery model, and unresolved implementation decisions are in the [system design](docs/SYSTEM_DESIGN.md).
 
 ## Proposed scope

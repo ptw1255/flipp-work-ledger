@@ -1,6 +1,6 @@
 # flipp Work Ledger PRD
 
-Version 0.4 · 8 October 2026 · For review
+Version 0.5 · 8 October 2026 · For review
 
 ## Product direction
 
@@ -10,7 +10,7 @@ The assistant uses the ledger as an execution engine. The owner continues to dis
 
 This PRD defines the proposed MVP. It does not authorize implementation, deployment, spending, account connections, or persistent access. Public source code and documentation must remain separate from private runtime data.
 
-The companion [system design](SYSTEM_DESIGN.md) turns these product boundaries into proposed components, data contracts, invariants, recovery paths, and tests. It remains a design for review, not an implementation authorization.
+The [constraint acceptance matrix](CONSTRAINTS.md) gives these boundaries stable IDs, enforcement owners, proof requirements, failure behavior, and release gates. The companion [system design](SYSTEM_DESIGN.md) turns them into proposed components, data contracts, invariants, recovery paths, and tests. Both remain designs for review, not implementation authorization or evidence that a test passed.
 
 ### Decisions and proposals
 
@@ -55,6 +55,8 @@ These constraints are release boundaries, not optional implementation preference
 10. **No platform claim without a test.** Documentation may identify supported primitives, but remote MCP authentication, MCP Events, chat resumption, revocation, and reconnect behavior remain unverified until the synthetic end-to-end gate passes in the intended client.
 11. **Cost needs a limit.** The design should be free-tier-oriented and low-traffic by default, but no free-tier availability or zero-cost operation is assumed. Deployment, paid plans, and a monthly spending cap require separate approval.
 12. **Modular without distributed-system overhead.** Keep stable domain boundaries and versioned contracts inside a modular monolith. Do not add services, databases, queues, or orchestration products without evidence that their isolation or scale benefit exceeds their reliability and operating cost.
+
+The numbered prose above is the product summary. The stable identifiers and controlling acceptance criteria are in [CONSTRAINTS.md](CONSTRAINTS.md). If wording diverges, the matrix is the release-gate reference until the documents are reconciled.
 
 Proposed pilot guardrails are one owner, one primary assistant identity, at most 100 open tasks, 10,000 retained tasks, 100,000 audit entries, and one mutation per second with a short burst of 10. These are review values, not approved entitlements or performance promises. A five-minute claim lease with renewal after roughly one minute and reconciliation every five minutes are starting hypotheses that must be validated against actual assistant behavior and platform cost. The pilot has no hard assistant-start service-level agreement.
 
