@@ -1,6 +1,6 @@
 # flipp Work Ledger system design
 
-Version 0.3 · 8 October 2026 · For review
+Version 0.4 · 8 October 2026 · For review
 
 ## Status and intent
 
@@ -181,6 +181,10 @@ The MCP server exposes ledger operations only. Each mutation request contains `c
 Queries return canonical version numbers and `observed_at` separately from response time. The UI shows evidence age, stale claims, due or missed checks, and delivery health explicitly. Read endpoints may use derived projections for speed, but a projection exposes its source sequence and cannot answer as current if it is behind the requested version.
 
 ### Deterministic presentation model
+
+The [PRD payload contract](PRD.md#agent-and-human-payload-contract) is normative for field names, types, required/null semantics, and view allowlists. Agent queries return the coordination record in a versioned envelope; card/list and Details queries return their distinct human projections. All derive from one authorized canonical snapshot. Event bodies remain the separate minimal notification contract. Server modules own returned facts; no caller chooses owner or actor.
+
+The server must validate the requested view against authenticated owner and principal access, use explicit projection allowlists, and never send the agent record to the browser for client-side hiding. Unknown major versions, missing required fields, stale requested versions, and mismatched scope/fencing revisions fail as specified in the PRD. Cached card and Details versions must match. The synthetic example is contract documentation only; it is not an endpoint or proof of compatibility.
 
 The query layer builds one bounded, deterministic `TaskPresentation` projection before any conventional template or generated UI adapter runs. It contains canonical state, explicit qualifiers, next action, scope summary, evidence references and observation times, page projection time, dependency summaries, and chronological audit items. It never contains source bodies, credentials, signed URLs, contact records, execution-environment discovery, or arbitrary instructions.
 

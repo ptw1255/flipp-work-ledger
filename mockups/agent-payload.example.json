@@ -1,62 +1,174 @@
 {
-  "schema_version": "agent-coordination.example.v1",
-  "synthetic": true,
+  "contract_version": "1.0",
+  "view": "agent",
   "task_id": "task_synth_107",
-  "state": "Canceled",
-  "scope": {
-    "summary": "Read-only reconciliation; no new publication or compensating action",
-    "revision": null,
-    "approval_reference": null
+  "record_version": 8,
+  "source_sequence": 42,
+  "projected_at": "2026-10-08T14:32:00Z",
+  "freshness": {
+    "status": "current",
+    "reason": null
   },
-  "completion": {
-    "revision": null,
-    "condition": "Record whether the original synthetic publication was accepted"
-  },
-  "ownership": {
-    "principal": null,
-    "claim": null,
-    "future_claims_allowed": false
-  },
-  "next_action": {
-    "kind": "read_only_reconciliation",
-    "summary": "Check the original result without restarting execution"
-  },
-  "constraints": {
-    "external_write_allowed": false,
-    "retry_original_action_allowed": false
-  },
-  "timing": {
-    "canceled_at": "2026-10-08T14:22:00Z",
-    "last_check_at": "2026-10-08T14:22:00Z",
-    "review_due_at": "2026-10-08T15:00:00Z"
-  },
-  "evidence": [
+  "field_status": [
     {
-      "kind": "synthetic_observation",
-      "observed_at": "2026-10-08T14:21:00Z",
-      "outcome": "unknown",
-      "summary": "Request timed out after possible acceptance",
-      "reference": null
+      "path": "freshness.reason",
+      "reason": "not_applicable"
+    },
+    {
+      "path": "data.completion.verified_by_principal_id",
+      "reason": "not_set"
+    },
+    {
+      "path": "data.completion.verified_at",
+      "reason": "not_set"
+    },
+    {
+      "path": "data.timing.deadline_at",
+      "reason": "not_applicable"
+    },
+    {
+      "path": "data.timing.local_schedule",
+      "reason": "not_applicable"
+    },
+    {
+      "path": "data.relationships.parent_task_id",
+      "reason": "not_applicable"
+    },
+    {
+      "path": "data.relationships.join",
+      "reason": "not_applicable"
+    },
+    {
+      "path": "data.ownership.active_claim",
+      "reason": "not_applicable"
+    },
+    {
+      "path": "data.qualifiers.0.due_at",
+      "reason": "not_applicable"
+    },
+    {
+      "path": "data.delivery.last_event_id",
+      "reason": "not_applicable"
+    },
+    {
+      "path": "data.delivery.last_delivered_at",
+      "reason": "not_applicable"
+    },
+    {
+      "path": "data.delivery.next_retry_at",
+      "reason": "not_applicable"
     }
   ],
-  "dependencies": [],
-  "delivery_health": "unknown",
-  "task_revision": null,
-  "audit_sequence": null,
-  "projected_at": "2026-10-08T14:32:00Z",
-  "missing_fields": [
-    "scope.revision",
-    "scope.approval_reference",
-    "completion.revision",
-    "ownership.principal",
-    "task_revision",
-    "audit_sequence",
-    "delivery_health"
-  ],
-  "human_projection": {
+  "data": {
     "title": "Confirm publication outcome",
-    "status": "Canceled · outcome unknown",
-    "update": "Work is canceled. The original publication may still have gone through.",
-    "next_step": "Agent: check the original result."
+    "state": "Canceled",
+    "provenance": {
+      "created_at": "2026-10-08T14:12:00Z",
+      "created_by_principal_id": "principal_synth_owner",
+      "instruction_ref": "ref_synth_instruction_107"
+    },
+    "scope": {
+      "revision": 3,
+      "summary": "Synthetic publication; after cancellation, read-only reconciliation only",
+      "approval_ref": "ref_synth_approval_107",
+      "allowed_action_classes": [
+        "publish_synthetic_status",
+        "observe_original_result"
+      ],
+      "allowed_destination_refs": [
+        "ref_synth_test_receiver"
+      ],
+      "limits": []
+    },
+    "completion": {
+      "revision": 2,
+      "condition": "Verify the synthetic publication result with attributable evidence",
+      "accepted_observation_ids": [],
+      "verified_by_principal_id": null,
+      "verified_at": null
+    },
+    "next_action": {
+      "kind": "reconcile_readonly",
+      "summary": "Check the original result without restarting execution",
+      "resolver": "agent"
+    },
+    "timing": {
+      "eligible_at": "2026-10-08T14:18:00Z",
+      "deadline_at": null,
+      "next_check_at": "2026-10-08T15:00:00Z",
+      "last_check_at": "2026-10-08T14:22:00Z",
+      "local_schedule": null
+    },
+    "relationships": {
+      "parent_task_id": null,
+      "dependencies": [],
+      "join": null
+    },
+    "ownership": {
+      "assigned_principal_id": "principal_synth_agent",
+      "active_claim": null,
+      "last_attempt": {
+        "attempt_id": "attempt_synth_107_1",
+        "run_id": "run_synth_107_1",
+        "principal_id": "principal_synth_agent",
+        "fencing_generation": 4,
+        "status": "canceled",
+        "started_at": "2026-10-08T14:19:00Z",
+        "finished_at": "2026-10-08T14:22:00Z",
+        "scope_revision": 3,
+        "completion_revision": 2,
+        "cancellation_revision": 0
+      }
+    },
+    "cancellation": {
+      "revision": 1,
+      "canceled_at": "2026-10-08T14:22:00Z",
+      "reason": "Owner canceled the synthetic task",
+      "future_work_allowed": false
+    },
+    "outcome": {
+      "status": "uncertain",
+      "summary": "Original request timed out after possible acceptance; cancellation does not prove rollback",
+      "observed_at": "2026-10-08T14:21:00Z"
+    },
+    "evidence": [
+      {
+        "observation_id": "observation_synth_107_1",
+        "attempt_id": "attempt_synth_107_1",
+        "kind": "uncertain_outcome",
+        "summary": "Request timed out after possible acceptance",
+        "evidence_ref": "ref_synth_receipt_107",
+        "author_principal_id": "principal_synth_agent",
+        "observed_at": "2026-10-08T14:21:00Z",
+        "recorded_at": "2026-10-08T14:21:30Z",
+        "scope_revision": 3,
+        "completion_revision": 2,
+        "acceptance": "accepted"
+      }
+    ],
+    "reconciliation": {
+      "status": "waiting",
+      "mode": "read_only",
+      "next_check_at": "2026-10-08T15:00:00Z",
+      "reason": "Observe the original result; no new publication"
+    },
+    "qualifiers": [
+      {
+        "reason_code": "external_outcome_uncertain",
+        "summary": "Canceled · outcome unknown",
+        "observed_at": "2026-10-08T14:21:00Z",
+        "due_at": null
+      }
+    ],
+    "delivery": {
+      "status": "not_configured",
+      "last_event_id": null,
+      "last_delivered_at": null,
+      "next_retry_at": null
+    },
+    "audit": {
+      "latest_sequence": 42,
+      "history_ref": "ref_synth_audit_107"
+    }
   }
 }

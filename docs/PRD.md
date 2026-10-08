@@ -1,6 +1,6 @@
 # flipp Work Ledger PRD
 
-Version 0.6 · 8 October 2026 · For review
+Version 0.7 · 8 October 2026 · For review
 
 ## Product direction
 
@@ -62,16 +62,16 @@ Proposed pilot guardrails are one owner, one primary assistant identity, at most
 
 ## Owner experience
 
-The default view presents one compact card per action. Its face shows a title, plain-language state or attention cue, one next step, and the relevant time. Canonical state remains unchanged in the ledger. Sorting makes overdue checks and unresolved blockers easy to find without invented urgency.
+The default view presents one compact row per action in a continuous list. Each row shows a title, plain-language state or attention cue, one next step, and the relevant time. Canonical state remains unchanged in the ledger. Sorting makes overdue checks and unresolved blockers easy to find without invented urgency.
 
-Details expand within the card to show a short explanation, scope, evidence, and history. Evidence observation time is separate from view refresh time. Technical IDs, versions, leases, and approval references belong in the authenticated agent payload. Blockers, missed checks, and uncertain outcomes remain visible on the card face. The interface works on a narrow screen and supports keyboard navigation.
+Details expand within the row to show a short explanation, scope, evidence, and history. Evidence observation time is separate from view refresh time. Technical IDs, versions, leases, and approval references belong in the authenticated agent payload. Blockers, missed checks, and uncertain outcomes remain visible in the collapsed row. The interface works on a narrow screen and supports keyboard navigation.
 
 The initial interface is read-only apart from navigation and filtering. Requests to change scope, pause work, resume work, or cancel go through chat. A conversation link may be shown only when a supported, verified link exists.
 
 ### Interface requirements
 
 - Use a compact, neutral, evidence-first layout rather than oversized metric cards or decorative charts. A restrained orange accent may identify selection or attention, but color is never the only state cue.
-- Make each card useful without interaction: title, truthful state summary, one next step, relevant time, and any material exception.
+- Make each row useful without interaction: title, truthful state summary, one next step, relevant time, and any material exception.
 - Put the explanation, task scope, evidence provenance, and history in optional Details. Keep technical coordination metadata in the authenticated agent payload. Distinguish evidence observation time from view refresh time; material uncertainty and stale projection warnings stay visible without disclosure.
 - Preserve the canonical state names: Queued, Running, Waiting externally, Blocked, Completed, and Canceled. Show stale or expired claims, missed checks, delivery failures, and uncertain outcomes as explicit qualifiers rather than inventing new canonical states.
 - A canceled task with an uncertain external outcome remains Canceled. The interface may show its read-only reconciliation status but cannot imply that work resumed or the external action was reversed.
@@ -83,6 +83,99 @@ The initial interface is read-only apart from navigation and filtering. Requests
 The initial design exploration compares two views using identical synthetic state semantics: a compact ledger list with adjacent details, and a focused attention queue with chronological work history. The prototypes are review artifacts, not production UI or evidence that A2UI is integrated.
 
 The detailed presentation policy, priority rules, state-driven changes, and mockup interpretation are specified in [Agent-driven UI experience](AGENT_UI_EXPERIENCE.md).
+
+### Agent and human payload contract
+
+This is the normative v1 read contract. The list/card surface, human Details, agent MCP view, and event notification are distinct projections of one canonical ledger. They do not maintain separate task state. A collapsed row is the current card presentation.
+
+| View | Intended recipient | Permitted content |
+| --- | --- | --- |
+| `card` | Authenticated owner browser | Title, truthful status summary, next step, relevant time, visible material warnings |
+| `details` | Authenticated owner browser after disclosure | Human explanation, scope summary, evidence provenance and observation times, minimized chronology |
+| `agent` | Authenticated, owner-scoped MCP principal | Coordination record below: canonical state, revisions, constraints, claims, dependencies, evidence, recovery context |
+| Event | Authorized subscriber | Tiny wake notification only; fetch the current task before acting |
+
+Server authorization derives owner and caller principal from authenticated context. A caller cannot set either in a query or payload. Each view independently enforces owner, operation, and field-level access; asking for `agent` does not grant privileges. Agent-only means intended audience, not secret or trusted instructions. Task text and evidence remain untrusted data. No payload grants external tool access or replaces action-time approval.
+
+The browser must not receive the agent record and merely hide it with CSS, a closed disclosure, client JavaScript, or an A2UI model. It receives only the authorized human projection. Opaque references resolve through separately authorized queries; no raw source bodies, private contacts, signed URLs, tokens, passwords, cookies, or signing secrets appear in any projection.
+
+#### Types and envelope
+
+`Id` is an opaque nonempty string. `Revision` is a nonnegative integer (`record_version`, scope and completion revisions start at 1). `Instant` is an RFC 3339 UTC timestamp with `Z`. `Ref` is an opaque reference ID, never an embedded credential or signed URL. Strings are bounded, redacted text. `State` is exactly Queued, Running, Waiting externally, Blocked, Completed, or Canceled.
+
+All fields below are required unless marked **optional**. A nullable field must be present: null means unknown, not set, or not applicable, with its exact reason in `field_status`. Null is never zero, false, empty evidence, or authorization. An empty array means a known empty collection; unavailable collections must fail the query or be explicitly marked incomplete. Missing required nonnullable fields fail validation rather than being fabricated.
+
+| Field | Type / rule | Source owner |
+| --- | --- | --- |
+| `contract_version` | String, initially `1.0` | API contract registry |
+| `view` | Enum `card \| details \| agent` | Authorized query handler |
+| `task_id` | Id | Canonical Task |
+| `record_version` | Integer >= 1 | Canonical Task |
+| `source_sequence` | Revision | Committed audit sequence used by projection |
+| `projected_at` | Instant | Server query/projection builder |
+| `freshness` | Object: `status: current \| stale \| unknown`, `reason: string|null` | Server comparison with requested canonical version |
+| `field_status` | Array of `{path: string, reason: unknown \| not_set \| not_applicable \| incomplete}` | Projection validation |
+| `data` | Object matching the selected view below | Authorized canonical query |
+| `extensions` | Object, **optional**; namespaced, bounded, non-authoritative | Versioned API extensions |
+
+All returned fields are read-only snapshots. Human summaries are deterministic derivations, not editable task fields. Only named domain commands may alter canonical state; immutable scope revisions and append-only observations retain history. The source-owner column names the module responsible for the fact, not a caller-supplied owner identity.
+
+#### Agent coordination record (`data` for `view: agent`)
+
+| Field | Type / required children | Source owner and mutation rule |
+| --- | --- | --- |
+| `title`, `state` | String; State | Task module; title via scoped revision, state via validated transition |
+| `provenance` | `created_at: Instant`, `created_by_principal_id: Id`, `instruction_ref: Ref` | Server-attributed creation; no copied chat |
+| `scope` | `revision: Revision>=1`, `summary: string`, `approval_ref: Ref|null`, `allowed_action_classes: string[]`, `allowed_destination_refs: Ref[]`, `limits: {name:string,value:number,unit:string}[]` | Scope/policy module; immutable revision. No approval reference means relevant execution is blocked, not implicitly approved |
+| `completion` | `revision: Revision>=1`, `condition: string`, `accepted_observation_ids: Id[]`, `verified_by_principal_id: Id|null`, `verified_at: Instant|null` | Assistant verifies external result; ledger validates attribution, structure, revisions, and transition. Database receipt does not prove real-world completion |
+| `next_action` | `kind: execute \| observe \| owner_decision \| reconcile_readonly \| none`, `summary: string`, `resolver: agent \| owner \| external \| none` | Task policy/query; descriptive, not executable instructions or permission |
+| `timing` | `eligible_at: Instant|null`, `deadline_at: Instant|null`, `next_check_at: Instant|null`, `last_check_at: Instant|null`, `local_schedule: {time_zone:string,expression:string}|null` | Schedule module; UTC instants plus original IANA zone/local expression for local schedules. Explicit DST ambiguity handling |
+| `relationships` | `parent_task_id: Id|null`, `dependencies: Dependency[]`, `join: Join|null` | Dependency module; v1 parent/join null when unused. Future extension cannot widen scope or silently complete parent |
+| `ownership` | `assigned_principal_id: Id|null`, `active_claim: Claim|null`, `last_attempt: Attempt|null` | Server task/attempt modules; identity derived from authentication, never caller-chosen actor |
+| `cancellation` | `revision: Revision`, `canceled_at: Instant|null`, `reason: string|null`, `future_work_allowed: boolean` | Cancel command/policy; Canceled is terminal, invalidates claims/wakes. Never implies rollback |
+| `outcome` | `status: not_observed \| pending \| verified_success \| verified_failure \| uncertain`, `summary: string`, `observed_at: Instant|null` | Accepted observation; unknown acceptance remains uncertain |
+| `evidence` | `Observation[]` | Observation module; append-only, attributable, revision-bound, redacted |
+| `reconciliation` | `status: not_needed \| due \| waiting \| resolved`, `mode: none \| read_only`, `next_check_at: Instant|null`, `reason: string|null` | Recovery policy; canceled work cannot resume through reconciliation |
+| `qualifiers` | Array of `{reason_code:string, summary:string, observed_at:Instant|null, due_at:Instant|null}` | Deterministic diagnostics; expired claim, missed check, blocker, delivery failure, uncertainty |
+| `delivery` | `status: not_configured \| healthy \| delayed \| failed \| unknown`, `last_event_id: Id|null`, `last_delivered_at: Instant|null`, `next_retry_at: Instant|null` | Outbox module; delivery health is not task progress |
+| `audit` | `latest_sequence: Revision`, `history_ref: Ref` | Append-only audit; paginated, independently authorized history |
+
+Nested types are also required contracts:
+
+- `Dependency`: `task_id: Id`, `required_state: State`, `required_scope_revision: Revision>=1`, `required_completion_revision: Revision>=1`, `status: pending|satisfied|blocked`, `accepted_observation_ids: Id[]`. Reject cycles; a changed child revision invalidates outdated acceptance.
+- `Join`: `policy: all_required`, `required_child_task_ids: Id[]`, `status: pending|satisfied|blocked`, `accepted_observation_ids: Id[]`. Future-only; completion requires current-revision proof from every required child.
+- `Claim`: `attempt_id: Id`, `run_id: Id`, `principal_id: Id`, `fencing_generation: Revision>=1`, `lease_expires_at: Instant`, `scope_revision: Revision>=1`, `completion_revision: Revision>=1`, `cancellation_revision: Revision`. An expired claim may be returned for diagnosis but cannot authorize a write.
+- `Attempt`: `attempt_id: Id`, `run_id: Id`, `principal_id: Id`, `fencing_generation: Revision>=1`, `status: claimed|started|waiting|finished|stale|canceled`, `started_at: Instant|null`, `finished_at: Instant|null`, `scope_revision: Revision>=1`, `completion_revision: Revision>=1`, `cancellation_revision: Revision`. Claimed does not mean started.
+- `Observation`: `observation_id: Id`, `attempt_id: Id|null`, `kind: fact|blocker|completion_proof|uncertain_outcome|reconciliation`, `summary: string`, `evidence_ref: Ref|null`, `author_principal_id: Id`, `observed_at: Instant`, `recorded_at: Instant`, `scope_revision: Revision>=1`, `completion_revision: Revision>=1`, `acceptance: pending|accepted|rejected`. An observation is attributed, not automatically verified truth.
+
+#### Human projections
+
+`card.data` requires `title: string`, `status_summary: string`, `next_step: string`, `resolver: agent|owner|external|none`, `relevant_time: {label:string,at:Instant|null}`, and `warnings: {reason_code:string,text:string}[]`. The canonical task state remains unchanged; summaries map from documented state/qualifier fields. Material blockers, stale projection, missed checks, and uncertain canceled outcomes must survive this projection without expanding Details. Relevant time null means no deadline or dependency timing, as labeled.
+
+`details.data` requires `card` (the same card projection), `explanation: string`, `scope_summary: string`, `evidence: {summary:string,source_label:string,observed_at:Instant,recorded_at:Instant}[]`, `last_check_at: Instant|null`, and `history: {at:Instant,label:string,summary:string}[]`. Evidence observation time and envelope projection time are distinct. Human Details excludes IDs, revisions, leases, approval references, capabilities, fencing, and internal diagnostic payloads. Its entries are minimized and authorized, not a raw audit dump.
+
+#### Events, compatibility, and consistency
+
+The event body is separate: `contract_version: string`, `event_id: Id`, `name: task.needs_attention`, `task_id: Id`, `record_version: integer>=1`, `attention_generation: Revision`, `reason_code: string`, `occurred_at: Instant`. Authentication/signature belongs to the verified transport, never task JSON. Events omit full task, evidence, claim, scope, and human projections. A wake is a hint to fetch, not completion proof or authority.
+
+Unknown major contract versions fail closed. Minor versions may add optional fields only; required fields, state meanings, null meanings, or field types require a major version. Readers may ignore unknown optional extensions but must reject unknown state/action enum values that affect safety. No missing field may be supplied by a model guess.
+
+Queries use stable source versions and pagination. A projection behind a requested record version is explicitly stale or rejected; it cannot claim to be current. Clients discard older record versions and source sequences, and cannot combine card and Details from different task versions. A scope change invalidates cached scope and completion assumptions and requires a fresh authorized fetch.
+
+The read payload is not a write request. Mutations separately require `contract_version`, `expected_record_version`, `idempotency_key`, and `canonical_input_hash`; claim-bound writes also require current run/fencing and scope/completion/cancellation revisions. Server recomputes hashes and derives identity. Same key/input returns the stored receipt; changed input with the same key fails. Stale writes fail without partial mutation. No UI disclosure can initiate a mutation.
+
+The [public synthetic JSON example](../mockups/agent-payload.example.json) follows this agent read contract. Example values establish no approval, integration, or backend implementation.
+
+#### Contract acceptance cases
+
+1. Reject missing required fields, invalid types/enums, unexplained nulls, unknown major versions, and unsupported required extensions.
+2. Wrong-owner, revoked, and unauthorized-view requests fail without revealing resource existence. Caller-supplied owner/principal cannot widen access.
+3. Projection allowlist tests show browser HTML, network responses, client state, and A2UI model/actions contain no agent-only metadata or secrets.
+4. Card and Details agree with the same task version; stale projection and evidence age cannot be relabeled fresh. Older updates cannot replace newer state.
+5. Scope/completion changes invalidate earlier proof and cached action assumptions. Stale record/fence/revision writes fail; duplicate command receipts remain stable.
+6. Canceled-with-uncertainty remains visibly canceled and uncertain; no claim, retry, or resumption follows disclosure or read-only reconciliation.
+7. Events contain only the minimal notification contract. Delivery and callback receipt never become task completion.
+8. The assistant's verified outcome and attributable current-revision evidence are required for completion; database presence alone cannot pass.
 
 ### Task states
 

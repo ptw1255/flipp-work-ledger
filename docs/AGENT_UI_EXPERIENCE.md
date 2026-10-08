@@ -25,18 +25,18 @@ The page keeps four stable regions even as work changes:
 
 1. **Context bar:** quiet product name and view update time.
 2. **Presentation controls:** a small view switcher, search, and reset.
-3. **Action cards:** title, plain-language state, next step, and relevant time.
-4. **Progressive disclosure:** explanation, scope, evidence, and history expand inside the card without replacing the page.
+3. **Action list:** title, plain-language state, next step, and relevant time per row.
+4. **Progressive disclosure:** explanation, scope, evidence, and history expand inside the row without replacing the page.
 
 The human surface answers what happened, whether the owner needs to act, and what happens next. It uses system typography, generous spacing, neutral surfaces, few borders, and small orange attention cues. No raw IDs, leases, revision numbers, payloads, audit tables, or repeated freshness labels appear by default.
 
-Blockers, missed checks, and uncertain outcomes remain explicit on the card face. Scope, evidence observation time, and chronology are available in Details. A stale projection warning is always visible when applicable; a fresh page cannot imply fresh evidence. Human-friendly labels are deterministic mappings and never overwrite canonical state.
+Blockers, missed checks, and uncertain outcomes remain explicit in collapsed rows. Scope, evidence observation time, and chronology are available in Details. A stale projection warning is always visible when applicable; a fresh page cannot imply fresh evidence. Human-friendly labels are deterministic mappings and never overwrite canonical state.
 
 ### Separate agent payload
 
 An authenticated agent query returns a versioned coordination payload containing canonical state and revision, scope and completion revisions, approval references, ownership and claim validity, dependencies, due times, next check, action constraints, evidence references and observation times, delivery health, audit sequence, projection time, and missing-field warnings. The agent uses this payload to inspect and coordinate work. The human renderer receives a smaller presentation projection.
 
-These are distinct authorized query contracts, not two stores. Hiding content in a card is a presentation choice, not a security boundary. Server authorization and owner-scoped MCP queries enforce access. Private agent payloads are not embedded in HTML, returned through A2UI action context, or placed in client source. The static prototypes use public synthetic fixtures only. [Example agent payload](../mockups/agent-payload.example.json) illustrates the contract and explicitly marks unknown fields; it is not a backend endpoint.
+These are distinct authorized query contracts, not two stores. Hiding content in a disclosure is a presentation choice, not a security boundary. Server authorization and owner-scoped MCP queries enforce access. Private agent payloads are not embedded in HTML, returned through A2UI action context, or placed in client source. The static prototypes use public synthetic fixtures only. The [normative PRD payload contract](PRD.md#agent-and-human-payload-contract) controls the [synthetic example](../mockups/agent-payload.example.json); the example is not a backend endpoint.
 
 Desktop may place the work index beside inspection. Mobile stacks the same regions in the same reading order. State changes update labels, qualifiers, next action, and chronology within those regions; they do not replace the whole application shell, open a surprise modal, or move essential evidence to a new location.
 
@@ -97,7 +97,7 @@ MCP Events remains the wake path. A2UI changes presentation only after a current
 
 ### A · Compact ledger
 
-The selected direction: one compact card per action, on a subtle textured neutral background. Two columns on desktop become one on mobile. Card faces carry only the information needed to understand the work and next step; Details expands explanation and evidence. Technical agent metadata stays outside the human surface.
+The selected direction: one continuous list on a subtle textured neutral background. Each action occupies a compact row separated by a quiet divider, on both desktop and mobile. Rows carry only the information needed to understand the work and next step; Details expands explanation and evidence within the row. Technical agent metadata stays outside the human surface.
 
 ### B · Attention and chronology
 
