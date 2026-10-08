@@ -21,3 +21,5 @@ The data and timestamps are synthetic and fixed so layout reviews are reproducib
 Variant A supersedes the prior continuous-list baseline. On mobile, columns stack with a keyboard-accessible state jump. Cards are not draggable; filter/search/reset/navigation/Details are presentation-only. Blocked and Canceled remain separate columns, and uncertainty stays on the card face. Reduced transparency and unsupported blur use solid-white cards.
 
 Additional board review states: [desktop Details](screenshots/variant-a-desktop-detail.png) · [attention filter](screenshots/variant-a-attention.png).
+
+[Design review and checks](KANBAN_REVIEW.md) · [reduced-transparency render](screenshots/variant-a-reduced-transparency.png). This is static design evidence; implementation gates remain NOT RUN.

@@ -1,6 +1,6 @@
 # flipp Work Ledger agent-driven UI experience
 
-Version 0.2 · 8 October 2026 · For review
+Version 0.3 · 8 October 2026 · For review
 
 ## Purpose and status
 
@@ -24,13 +24,13 @@ The surface should support those questions without invented priority scores, dec
 The page keeps four stable regions even as work changes:
 
 1. **Context bar:** quiet product name and view update time.
-2. **Presentation controls:** a small view switcher, search, and reset.
-3. **Action list:** title, plain-language state, next step, and relevant time per row.
-4. **Progressive disclosure:** explanation, scope, evidence, and history expand inside the row without replacing the page.
+2. **Presentation controls:** a small lens switcher, search, reset, and mobile state jump.
+3. **Kanban board:** six canonical state columns with simple title/status/next-step/time cards.
+4. **Progressive disclosure:** explanation, scope, evidence, and history expand inside the card without replacing the page.
 
-The human surface answers what happened, whether the owner needs to act, and what happens next. It uses system typography, generous spacing, neutral surfaces, few borders, and small orange attention cues. No raw IDs, leases, revision numbers, payloads, audit tables, or repeated freshness labels appear by default.
+The human surface answers what happened, whether the owner needs to act, and what happens next. It uses Apple-inspired textured white styling, system typography, generous spacing, restrained frosted-glass cards, soft borders/shadows, and small orange attention cues. Maintain accessible contrast without depending on blur; reduced transparency or unsupported blur produces solid-white cards. No raw IDs, leases, revision numbers, payloads, audit tables, or repeated freshness labels appear by default.
 
-Blockers, missed checks, and uncertain outcomes remain explicit in collapsed rows. Scope, evidence observation time, and chronology are available in Details. A stale projection warning is always visible when applicable; a fresh page cannot imply fresh evidence. Human-friendly labels are deterministic mappings and never overwrite canonical state.
+Blockers, missed checks, and uncertain outcomes remain explicit on collapsed cards. Scope, evidence observation time, and chronology are available in Details. A stale projection warning is always visible when applicable; a fresh page cannot imply fresh evidence. Human-friendly labels are deterministic mappings and never overwrite canonical state or column placement.
 
 ### Separate agent payload
 
@@ -38,11 +38,26 @@ An authenticated agent query returns a versioned coordination payload containing
 
 These are distinct authorized query contracts, not two stores. Hiding content in a disclosure is a presentation choice, not a security boundary. Server authorization and owner-scoped MCP queries enforce access. Private agent payloads are not embedded in HTML, returned through A2UI action context, or placed in client source. The static prototypes use public synthetic fixtures only. The [normative PRD payload contract](PRD.md#agent-and-human-payload-contract) controls the [synthetic example](../mockups/agent-payload.example.json); the example is not a backend endpoint.
 
-Desktop may place the work index beside inspection. Mobile stacks the same regions in the same reading order. State changes update labels, qualifiers, next action, and chronology within those regions; they do not replace the whole application shell, open a surprise modal, or move essential evidence to a new location.
+Desktop shows six readable columns; intermediate widths wrap into three columns; mobile stacks six sections in the same canonical order. State jump scrolls to and focuses the chosen heading. A canonical state change moves a card to its matching column and updates its text; the shell and column order remain stable. The implementation must preserve keyboard focus or announce a moved card's destination instead of silently losing it. There are no drag/drop or status-edit controls.
+
+## Canonical board mapping
+
+| Column | Canonical field value | Attention handling |
+| --- | --- | --- |
+| Queued | Queued | Show eligibility/next step; do not imply started |
+| Running | Running | Keep expired/stale claim cue on the card |
+| Waiting externally | Waiting externally | Show dependency/next check and missed-check cue |
+| Blocked | Blocked | Keep blocker and resolver visible |
+| Completed | Completed | Keep evidence-backed completion separate from cancellation |
+| Canceled | Canceled | Preserve uncertain outcome/read-only reconciliation; never imply rollback or resumption |
+
+Each task is displayed once, using `card.data.canonical_state` from the authorized human projection. The board creates no backend states, task-position store, or authority. Columns are categorical state groupings, not a linear funnel or percent complete. Attention qualifiers do not move cards into a different canonical column.
+
+All work is the initial board lens. Filters preserve all six headings with visible counts and explicit empty columns. Attention spans columns and includes uncertain Canceled and expired Running records. Search scope and reset remain visible. A change request goes through the existing chat and narrow versioned ledger commands; expanding Details or jumping columns does not perform work.
 
 ## Canonical lenses
 
-flipp may propose one of three default lenses from the canonical projection. The owner can always change or reset it.
+flipp may recommend a lens from the canonical projection, but the initial board shows All work. A recommendation does not silently filter out cards. The owner can select or reset a lens; canonical columns retain their order and state mapping.
 
 | Lens | Inclusion rule | Ordering rule | What must remain visible |
 | --- | --- | --- | --- |
@@ -50,16 +65,16 @@ flipp may propose one of three default lenses from the canonical projection. The
 | **Progressing** | Running tasks with valid claims; recently eligible or newly started tasks; tasks with a recent task check and an expected next step | Most recent meaningful transition, then next deadline | Claim validity, actual start milestone, current step, next action, last task check |
 | **Waiting** | Waiting externally with a future check or active subscription; queued work not yet eligible | Earliest next check or eligibility time | Dependency, last observation, next check, stopping condition, subscription or schedule health |
 
-Completed work is available through state filters and history but does not displace unresolved work in the default lens. Canceled work appears in Needs attention only when an external outcome remains uncertain or read-only reconciliation is overdue.
+Completed and Canceled work have separate visible columns in All work. Canceled work remains included in Needs attention when an external outcome is uncertain or read-only reconciliation is overdue.
 
 The selection rule is deterministic. If any task satisfies Needs attention, that lens is proposed. Otherwise use Progressing when work is active, then Waiting. If none apply, show the full ledger with an explicit quiet state. flipp may explain the proposal using canonical reason codes; it cannot invent “urgent,” “high priority,” confidence, or percentages.
 
 ## State-driven presentation
 
-| Canonical transition | Row and detail changes | Attention behavior | What must not happen |
+| Canonical transition | Card and detail changes | Attention behavior | What must not happen |
 | --- | --- | --- | --- |
 | Created → Queued | Show eligibility time, scope, and next action | Surface only if eligible now and its expected start is overdue | Do not label as started or running |
-| Queued → Running | Add actual start, valid lease summary, current step, and claim expiry | Move to Progressing unless the claim is stale | A claim alone cannot imply the attempt started |
+| Queued → Running | Move to Running; show actual start/current step/next action; keep technical lease fields agent-only | Included in Progressing unless the claim is stale | A claim alone cannot imply the attempt started |
 | Running → Waiting externally | Replace current step with named dependency, last observation, next check, or subscription | Move to Waiting until a check is missed or delivery fails | Do not infer external completion from silence |
 | Any nonterminal → Blocked | Add blocker reason, resolver, and smallest next step | Move to Needs attention | Never hide the blocker behind a generic status summary |
 | Running → Completed | Add completion time and attributable, revision-consistent evidence | Remove from default unresolved work | Do not equate callback receipt, claim, or response text with completion |
@@ -67,7 +82,7 @@ The selection rule is deterministic. If any task satisfies Needs attention, that
 | Claim expires | Keep canonical state honest and add `Expired claim` qualifier plus recovery next step | Move to Needs attention | Do not call the external action failed |
 | Check is missed | Keep Waiting externally and add `Missed check` with duration | Move to Needs attention | Do not invent agent or Mac connectivity state |
 
-The inspection surface includes a compact state path derived from audit history so two or three material transitions are visible without animation or layout replacement.
+Expanded Details includes minimized chronology so two or three material transitions can be inspected without animation or shell replacement. Column movement follows the actual state, not the attention lens.
 
 ## Evidence and freshness binding
 
@@ -95,9 +110,9 @@ MCP Events remains the wake path. A2UI changes presentation only after a current
 
 ## Prototype directions
 
-### A · Compact ledger
+### A · Minimal kanban board
 
-The selected direction: one continuous list on a subtle textured neutral background. Each action occupies a compact row separated by a quiet divider, on both desktop and mobile. Rows carry only the information needed to understand the work and next step; Details expands explanation and evidence within the row. Technical agent metadata stays outside the human surface.
+The selected direction supersedes the previous continuous-list baseline. Simple cards sit in six canonical columns on a subtle textured neutral background, with system typography and restrained orange attention cues. Mobile stacks the columns and offers a state jump. Details expands in the card. Technical agent metadata stays outside the human surface.
 
 ### B · Attention and chronology
 
@@ -113,6 +128,8 @@ Before accepting either direction for implementation:
 - verify at least Queued → Running → Waiting and Running → Canceled-with-uncertainty paths without layout jump;
 - verify desktop and mobile widths, zoom, overflow, keyboard order, visible focus, semantic headings, and non-color state cues;
 - compare every displayed state and qualifier with a golden canonical projection;
+- verify one-card/one-canonical-column grouping, fixed headings/counts/empty columns under filters, and keyboard mobile state jump;
+- verify live canonical movement preserves focus or announces the destination without a drag/drop mutation affordance;
 - confirm there are no approve, cancel, retry, execute, claim, scope, credential, or environment controls;
 - confirm all examples and screenshots contain synthetic data only.
 

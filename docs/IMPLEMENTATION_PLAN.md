@@ -1,6 +1,6 @@
 # flipp Work Ledger implementation plan
 
-Version 0.1 · 8 October 2026 · Proposed; all implementation gates NOT RUN
+Version 0.2 · 8 October 2026 · Proposed; all implementation gates NOT RUN
 
 ## Scope and controlling documents
 
@@ -27,7 +27,7 @@ C01, C03, C04, C07, and C10 are non-waivable for the private pilot, following th
 | G2 · Canonical state and commands | G1 | Transactional state machine, narrow commands, receipts, audit | NOT RUN |
 | G3 · Claims, scheduling, recovery | G2 | Fenced attempts, cancellation, durable wakes, outbox recovery | NOT RUN |
 | G4 · Privacy, projections, restore | G2 and G3 | Isolated human/agent views, retention and quarantined restore | NOT RUN |
-| G5 · Minimal UI and bounded A2UI | G4; selected protocol/catalog decisions | Truthful list and Details, safe adapter and fallback | NOT RUN |
+| G5 · Minimal UI and bounded A2UI | G4; selected protocol/catalog decisions | Truthful kanban and Details, safe adapter and fallback | NOT RUN |
 | G6 · Synthetic system pilot | G0–G5 | Whole-system evidence at approved synthetic envelope | NOT RUN |
 | G7 · Private pilot admission | G6 and explicit private-data/deployment approval | Restricted private pilot with recovery and cost controls | NOT RUN |
 
@@ -116,7 +116,7 @@ G1 is deliberately early. Build only enough disposable server plumbing and synth
 
 **Entry:** G2/G3 passed; retention, browser authentication, principal revocation, and backup recoverability decisions approved for the intended pilot.
 
-**Deliverables:** owner-derived routing; independently authorized card/list, Details, agent and audit queries; field allowlists; redacted logs/errors; minimal source references; deletion jobs; quarantined restore procedure plus external control journal or verified restoration manifest.
+**Deliverables:** owner-derived routing; independently authorized card/board, Details, agent and audit queries; field allowlists; redacted logs/errors; minimal source references; deletion jobs; quarantined restore procedure plus external control journal or verified restoration manifest.
 
 **Verification/evidence:** wrong-owner/anonymous/revoked/enumeration tests across every query and command; reject caller-supplied identity. Scan schemas, logs, errors, event bodies, repository fixtures, browser responses/source/client state, and A2UI data/action contexts for forbidden metadata, secrets, and source bodies. Golden projection tests compare card/Details/agent views from the same record version; stale projections cannot claim freshness. Test null meanings, required fields, unknown versions, pagination, out-of-order updates, and scope invalidation.
 
@@ -132,9 +132,9 @@ Delete/restore tests span the declared recovery window. Restoration starts with 
 
 ## G5 · Deterministic minimal UI and bounded A2UI adapter
 
-**Entry:** G4 passed; approved list presentation and protocol/catalog/renderer versions selected. A2UI compatibility is its own proof, separate from the already-passed wake loop.
+**Entry:** G4 passed; requested kanban presentation and protocol/catalog/renderer versions selected. A2UI compatibility is its own proof, separate from the already-passed wake loop.
 
-**Deliverables:** deterministic human projection; compact list with title/status/next step/time; expandable explanation/evidence; visible blockers/uncertainty; view/search/reset; host-owned versioned catalog; bounded adapter validation; canonical safe-text fallback. Keep technical agent metadata server-side. V1 controls are presentation-only. Keep `sendDataModel: false`.
+**Deliverables:** deterministic human projection; six canonical state columns with title/status/next-step/time cards; expandable explanation/evidence; visible blockers/uncertainty; view/search/reset/mobile state jump; no drag/drop mutation; host-owned versioned catalog; bounded adapter validation; canonical safe-text fallback. Keep technical agent metadata server-side. V1 controls are presentation-only. Keep `sendDataModel: false`.
 
 **Verification/evidence:** golden comparisons for every state and qualifier; canceled-with-uncertainty never looks resumed; old evidence never looks current because the page refreshed. Fuzz unknown protocol/catalog versions, component references, enum/action names, node counts, byte/string lengths and depth. Reject arbitrary code/HTML/CSS/imports, mutation actions, unsafe URLs, and full-model return. Invalid output must preserve state, blocker, next step, uncertainty, and freshness in fallback.
 
@@ -142,27 +142,27 @@ Run Clean Data Presentation review against actual final renders: desktop and mob
 
 ### Pinned visual reference
 
-The current iteration to replicate is **Variant A, the compact continuous list**, at commit [868185dc54bbc5026b7489bd0ab586cb10d78916](https://github.com/ptw1255/flipp-work-ledger/tree/868185dc54bbc5026b7489bd0ab586cb10d78916). This reference records the latest design iteration; it is not blanket final UI approval. Variant B remains a comparison, not the default implementation target.
+The current iteration to replicate is **Variant A, the textured-white kanban board**, at commit [930ae7933b9ba5cea8da73a36b33288cee333b16](https://github.com/ptw1255/flipp-work-ledger/tree/930ae7933b9ba5cea8da73a36b33288cee333b16). This user-requested kanban iteration supersedes the previous continuous-list baseline; it is not blanket final UI approval or implementation authorization. Variant B remains a comparison, not the default implementation target.
 
 | Reference | Pinned artifact |
 | --- | --- |
-| Interactive source | [Variant A HTML](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/variant-a-ledger.html) |
-| Styling and texture | [CSS](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/styles.css), [texture](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/texture.svg) |
-| Fixture and presentation | [Synthetic data](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/data.js), [presentation logic](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/app.js) |
-| Desktop, collapsed | [1440 × 960 PNG](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/screenshots/variant-a-desktop.png) |
-| Mobile, collapsed | [390 × 844 PNG](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/screenshots/variant-a-mobile.png) |
-| Mobile, expanded uncertainty | [390 × 844 Details PNG](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/screenshots/variant-a-mobile-detail.png) |
+| Interactive source | [Variant A HTML](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/variant-a-ledger.html) |
+| Styling and texture | [CSS](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/styles.css), [texture](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/texture.svg) |
+| Fixture and presentation | [Synthetic data](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/data.js), [presentation logic](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/app.js) |
+| Desktop, collapsed | [1440 × 960 PNG](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/screenshots/variant-a-desktop.png) |
+| Mobile, collapsed | [390 × 844 PNG](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/screenshots/variant-a-mobile.png) |
+| Mobile, expanded uncertainty | [390 × 844 Details PNG](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/screenshots/variant-a-mobile-detail.png) |
 
 Visual acceptance under UI01/UI04 requires:
 
-- One continuous single-column list with quiet row dividers, rather than detached cards or a dashboard grid.
-- The subtle neutral texture, light shared surface, restrained orange attention cues, system typography, and quiet controls of the pinned source.
-- Comparable content width, row density, whitespace, title/status/next-step hierarchy, and time placement. Use the source values as the starting baseline rather than approximating from a thumbnail.
-- Collapsed rows keep title, truthful status/attention cue, next step, and relevant time. Technical IDs, revisions, leases, approval references, and agent payloads remain outside human client responses.
-- Details expands explanation, scope, evidence timing, and history within the row. It must not conceal a blocker or uncertain outcome on the collapsed surface.
-- Mobile retains the same list and reading order, with legible text, useful touch targets, visible focus, and no horizontal overflow. Expansion and filtering must not replace the page shell.
+- Six columns map one-to-one to Queued, Running, Waiting externally, Blocked, Completed, and Canceled. Each card appears once. Attention qualifiers never create new states or disguise Blocked/Canceled as progress. Keep headings/counts and explicit filtered-empty columns.
+- Apple-inspired textured white background, restrained frosted-glass cards, soft borders/shadows, orange attention cues, system typography, and quiet controls. Verify accessible text contrast, solid-white reduced-transparency fallback, and unsupported-blur fallback.
+- Comparable column/card widths and density, whitespace, title/status/next-step hierarchy, and time placement. Use the source values as the starting baseline rather than approximating from a thumbnail.
+- Collapsed cards keep title, truthful status/attention cue, next step, and relevant time. Coordination identities/revisions, leases, approval references, and the agent record remain outside human data; only the minimal authorized navigation/consistency envelope is delivered.
+- Details expands explanation, scope, evidence timing, and history within the card. It must not conceal a blocker or uncertain outcome on the collapsed surface.
+- Desktop shows six readable columns; intermediate widths wrap to three; mobile stacks six sections in the same order with a state-jump control that scrolls and focuses the heading. No horizontal page overflow, hover-only evidence, drag handles or drop targets. Canonical updates preserve/announce focus and card movement; filtering and disclosure never mutate state.
 
-Reproduce the pinned fixed synthetic fixture, 14:32 UTC projection time, viewport dimensions above, device scale factor 1, 100% zoom, and recorded browser/OS/font versions. Capture the default All work view with empty search and every disclosure closed, then the canceled-outcome row with Details open. For the mobile Details image, record the scroll position or row alignment. Capture implementation-only states such as stale projection and safe fallback separately; do not pretend the baseline image covers them.
+Reproduce the pinned fixed synthetic fixture, 14:32 UTC projection time, viewport dimensions above, device scale factor 1, 100% zoom, and recorded browser/OS/font versions. Capture the default All work view with empty search and every disclosure closed, then the Canceled-column card with Details open. For the mobile Details image, record the scroll position or card alignment. Also capture the attention lens, empty columns/search, mobile state jump, and reduced-transparency fallback. Capture implementation-only states such as stale projection and safe fallback separately; do not pretend the baseline image covers them.
 
 Review matching baseline/candidate renders side by side or with a screenshot diff. Before acceptance, document tolerances for layout geometry, spacing, wrapping, texture, and typography; record any deviations and reviewer disposition. Browser font rasterization may require manual review of text differences. No universal pixel-perfect threshold is assumed, and no numerical tolerance is approved yet. Missing semantics, clipping, changed status meaning, concealed uncertainty, or leaked metadata are failures regardless of visual similarity.
 
@@ -229,10 +229,10 @@ UI IDs trace [UI experience verification](AGENT_UI_EXPERIENCE.md#verification-ga
 
 | ID | Required proof |
 | --- | --- |
-| UI01 | Useful minimal list; honest active scope/search/reset/empty behavior |
+| UI01 | Useful minimal kanban; canonical grouping/counts and honest scope/search/reset/empty columns |
 | UI02 | All canonical states and blockers/expired/missed/uncertain qualifiers survive every lens |
 | UI03 | Evidence observation, last check, and projection freshness remain distinct |
-| UI04 | Stable state progression and disclosure; desktop/mobile/zoom/keyboard/focus/reading order |
+| UI04 | Canonical column placement/movement, disclosure and state jump; desktop/mobile/zoom/keyboard/focus/reading order; contrast/reduced transparency |
 | UI05 | Bounded host catalog/action allowlist, no mutations or arbitrary code, safe truthful fallback |
 | UI06 | Synthetic public examples; no private agent payload in human browser/A2UI responses |
 
@@ -288,8 +288,8 @@ A PASS must name the exact build and artifact, not merely a screenshot or verbal
 - Real authenticated intended-conversation wake/fetch loop proven with reconnect, unsubscribe, and revocation.
 - One canonical transactional ledger; narrow versioned/idempotent commands; attributable evidence; safe leases/fences; honest cancellation and uncertain-outcome recovery.
 - Due work and delivery failures remain visible; retries cannot create a feedback loop or imply completion.
-- Human list/Details and agent/event contracts validated; server auth and redaction proven; technical metadata absent from human client payloads.
-- Minimal responsive read-only UI and bounded adapter/fallback pass actual render, keyboard, integrity, and truth tests.
+- Human board/card/Details and agent/event contracts validated; server auth and redaction proven; technical metadata absent from human client payloads.
+- Minimal responsive read-only kanban UI and bounded adapter/fallback pass actual render, keyboard, integrity, and truth tests.
 - Retention/deletion/restore quarantine and operational stop/revoke procedures verified; restore cannot resurrect execution.
 - Approved private pilot scope, budget, limits, and data categories recorded. The assistant remains responsible for external authority, execution, and truth.
 - Remaining limitations documented: no universal at-most-once external effect guarantee, no inferred environment availability, no hard assistant-start SLA, and no claim of guaranteed free operation.

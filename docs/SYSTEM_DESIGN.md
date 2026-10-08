@@ -1,6 +1,6 @@
 # flipp Work Ledger system design
 
-Version 0.4 · 8 October 2026 · For review
+Version 0.5 · 8 October 2026 · For review
 
 ## Status and intent
 
@@ -182,15 +182,19 @@ Queries return canonical version numbers and `observed_at` separately from respo
 
 ### Deterministic presentation model
 
-The [PRD payload contract](PRD.md#agent-and-human-payload-contract) is normative for field names, types, required/null semantics, and view allowlists. Agent queries return the coordination record in a versioned envelope; card/list and Details queries return their distinct human projections. All derive from one authorized canonical snapshot. Event bodies remain the separate minimal notification contract. Server modules own returned facts; no caller chooses owner or actor.
+The [PRD payload contract](PRD.md#agent-and-human-payload-contract) is normative for field names, types, required/null semantics, and view allowlists. Agent queries return the coordination record in a versioned envelope; card/board and Details queries return their distinct human projections. All derive from one authorized canonical snapshot. Event bodies remain the separate minimal notification contract. Server modules own returned facts; no caller chooses owner or actor.
 
 The server must validate the requested view against authenticated owner and principal access, use explicit projection allowlists, and never send the agent record to the browser for client-side hiding. Unknown major versions, missing required fields, stale requested versions, and mismatched scope/fencing revisions fail as specified in the PRD. Cached card and Details versions must match. The synthetic example is contract documentation only; it is not an endpoint or proof of compatibility.
 
 The query layer builds one bounded, deterministic `TaskPresentation` projection before any conventional template or generated UI adapter runs. It contains canonical state, explicit qualifiers, next action, scope summary, evidence references and observation times, page projection time, dependency summaries, and chronological audit items. It never contains source bodies, credentials, signed URLs, contact records, execution-environment discovery, or arbitrary instructions.
 
+The selected human renderer is a kanban board, replacing the prior continuous-list baseline. Its six column keys are exactly Queued, Running, Waiting externally, Blocked, Completed, and Canceled. The card projection's required `canonical_state` determines grouping; no new backend board state or independent position store exists. Diagnostic qualifiers remain on the card in its actual column. Filtered empty columns keep their headings and counts. Invalid/unknown state cannot be assigned a guessed column.
+
+The board is read-mostly: filter, search, state-jump, reset, and Details are presentation controls. No drag/drop status or order writes exist. Chat-coordinated state changes still use authorized narrow domain commands with version/fencing checks. Desktop columns wrap only for readability; mobile stacks the same sections and uses focus-preserving state navigation. A2UI may compose approved board/column/card/disclosure components but may not alter canonical placement, suppress warnings, or return agent-only metadata.
+
 The same task version and catalog version produce the same semantic view model. A renderer may change layout across viewport sizes, but it cannot relabel state, discard an active blocker, promote stale evidence, infer connectivity, or manufacture a completion. If a projection is stale, the view declares its source task version and projection time.
 
-Expose separate authenticated query contracts for agents and humans. The agent coordination payload includes revisions, approval references, claims and ownership, dependency state, due/check times, action constraints, evidence references, delivery health, and audit sequence. Unknown fields remain explicitly unknown. The human projection contains a concise title, truthful status summary, next step, material warning, and optional evidence details. Both derive from the same canonical record. Do not ship the private agent payload to the browser or embed it in A2UI data or action context. Public prototype fixtures remain synthetic.
+Expose separate authenticated query contracts for agents and humans. The agent coordination payload includes revisions, approval references, claims and ownership, dependency state, due/check times, action constraints, evidence references, delivery health, and audit sequence. Unknown fields remain explicitly unknown. The human projection contains canonical_state for board grouping, a concise title, truthful status summary, next step, material warning, and optional evidence details. Both derive from the same canonical record. Do not ship the private agent payload to the browser or embed it in A2UI data or action context. Public prototype fixtures remain synthetic.
 
 The deterministic surface-selection and state-progression policy is defined in [Agent-driven UI experience](AGENT_UI_EXPERIENCE.md). It chooses among stable Needs attention, Progressing, and Waiting lenses from canonical fields; it does not give a model open-ended authority to decide urgency or rewrite the page structure.
 
@@ -211,7 +215,7 @@ flowchart LR
     Allowlist --> Query
 ```
 
-The catalog is owned by the host and mirrors the ledger design system. Initial components cover text, state labels, metadata rows, task lists, detail groups, timelines, filter controls, navigation, warnings, and safe fallback. Generated surfaces cannot import arbitrary HTML, JavaScript, CSS, external code, or ad hoc renderer functions. [A2UI catalogs](https://a2ui.org/concepts/catalogs/)
+The catalog is owned by the host and mirrors the ledger design system. Initial components cover text, state labels, human metadata, board columns/cards, disclosure groups, timelines, filter controls, navigation, warnings, and safe fallback. Generated surfaces cannot import arbitrary HTML, JavaScript, CSS, external code, or ad hoc renderer functions. [A2UI catalogs](https://a2ui.org/concepts/catalogs/)
 
 Validate protocol and catalog versions, schema, component references, action names, data types, enum values, depth, total nodes, collection lengths, string lengths, and total payload bytes before rendering. Validate again in the client and degrade to the canonical text fallback on error. Do not permit a validation error to hide the task's state, blocker, uncertainty, or freshness.
 

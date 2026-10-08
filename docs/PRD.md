@@ -1,6 +1,6 @@
 # flipp Work Ledger PRD
 
-Version 0.7 · 8 October 2026 · For review
+Version 0.8 · 8 October 2026 · For review
 
 ## Product direction
 
@@ -26,7 +26,7 @@ The [constraint acceptance matrix](CONSTRAINTS.md) gives these boundaries stable
 **Proposed for v1**
 
 - One human owner and one primary scoped assistant identity. The data model and authorization boundaries should allow additional agent identities later without enabling them in the initial release. Additional people and sharing require a separate decision.
-- A task list, a task detail view, and an activity history, with changes requested through the existing conversation.
+- A canonical-state kanban board, card Details, and minimized activity history, with changes requested through the existing conversation.
 - One authoritative task store with versioned mutations, durable wake scheduling, and recoverable event delivery.
 - A modular monolith with stable internal interfaces. Split services only when observed scaling, isolation, or operational needs justify the added complexity.
 - The Cloudflare component choices and retention defaults below, subject to review and a connectivity test.
@@ -62,16 +62,16 @@ Proposed pilot guardrails are one owner, one primary assistant identity, at most
 
 ## Owner experience
 
-The default view presents one compact row per action in a continuous list. Each row shows a title, plain-language state or attention cue, one next step, and the relevant time. Canonical state remains unchanged in the ledger. Sorting makes overdue checks and unresolved blockers easy to find without invented urgency.
+The default view is a minimalist kanban board with one column for each canonical state. Each task card shows a title, plain-language status or attention cue, one next step, and relevant time. State and approval changes stay coordinated with flipp in the existing chat; board placement is derived from the ledger, not an editable status field.
 
-Details expand within the row to show a short explanation, scope, evidence, and history. Evidence observation time is separate from view refresh time. Technical IDs, versions, leases, and approval references belong in the authenticated agent payload. Blockers, missed checks, and uncertain outcomes remain visible in the collapsed row. The interface works on a narrow screen and supports keyboard navigation.
+Details expand within the card to show a short explanation, scope, evidence, and history. Evidence observation time is separate from view refresh time. Technical IDs, versions, leases, and approval references belong in the authenticated agent payload. Blockers, missed checks, and uncertain outcomes remain visible on the collapsed card. On phones the columns stack in canonical order with a keyboard-accessible state jump control.
 
 The initial interface is read-only apart from navigation and filtering. Requests to change scope, pause work, resume work, or cancel go through chat. A conversation link may be shown only when a supported, verified link exists.
 
 ### Interface requirements
 
-- Use a compact, neutral, evidence-first layout rather than oversized metric cards or decorative charts. A restrained orange accent may identify selection or attention, but color is never the only state cue.
-- Make each row useful without interaction: title, truthful state summary, one next step, relevant time, and any material exception.
+- Use an Apple-inspired textured white background, clear system typography, and restrained frosted-glass task cards with soft borders/shadows. Maintain accessible text contrast; reduced-transparency preference or unsupported blur uses solid-white cards. No oversized metrics or decorative charts. Orange attention cues stay small and never carry state alone.
+- Make each card useful without interaction: title, truthful state summary, one next step, relevant time, and any material exception. Column headings name canonical states; positioning cannot disguise Blocked or Canceled as progress.
 - Put the explanation, task scope, evidence provenance, and history in optional Details. Keep technical coordination metadata in the authenticated agent payload. Distinguish evidence observation time from view refresh time; material uncertainty and stale projection warnings stay visible without disclosure.
 - Preserve the canonical state names: Queued, Running, Waiting externally, Blocked, Completed, and Canceled. Show stale or expired claims, missed checks, delivery failures, and uncertain outcomes as explicit qualifiers rather than inventing new canonical states.
 - A canceled task with an uncertain external outcome remains Canceled. The interface may show its read-only reconciliation status but cannot imply that work resumed or the external action was reversed.
@@ -80,17 +80,32 @@ The initial interface is read-only apart from navigation and filtering. Requests
 - Every rendered status comes from an authenticated canonical projection or deterministic view model. Presentation generation cannot invent progress, hide a blocker, upgrade evidence, or turn callback receipt into completion.
 - Provide a separate authenticated agent coordination payload with revisions, claims, scope, constraints, evidence, timing, and recovery context. The human UI receives a smaller projection; private agent payloads are never embedded in browser source or A2UI action context.
 
-The initial design exploration compares two views using identical synthetic state semantics: a compact ledger list with adjacent details, and a focused attention queue with chronological work history. The prototypes are review artifacts, not production UI or evidence that A2UI is integrated.
+The selected design is Variant A's textured, minimalist kanban board. The prior continuous-list baseline is superseded. Variant B remains a comparison attention view. These synthetic prototypes are review artifacts, not production UI or evidence that A2UI is integrated.
+
+### Board state mapping and interaction
+
+| Board column, in display order | Canonical state | Required behavior |
+| --- | --- | --- |
+| Queued | Queued | Eligibility and next step; never imply actual start |
+| Running | Running | Actual running state; expired claim stays visible rather than silently moved |
+| Waiting externally | Waiting externally | Named dependency, next check, and any missed-check cue |
+| Blocked | Blocked | Visible reason and resolver; not grouped into Running |
+| Completed | Completed | Evidence-backed terminal state; not merged with Canceled |
+| Canceled | Canceled | Terminal cancellation with uncertain outcome or read-only reconciliation cue when relevant |
+
+Every card appears in exactly one column, derived from `canonical_state`, not a model's title/status inference. Columns are categories, not a promise that every task follows a linear path or earns a progress percentage. Qualifiers never create backend states or relocate tasks. Attention is a cross-column filter; it must include uncertain canceled outcomes and stale/missed conditions. Preserve all six headings and disclose visible/total counts when filters make columns empty. Unknown states fail to a safe canonical warning rather than guessing a column.
+
+Desktop shows six columns when readable, with a three-column wrap at intermediate widths. Narrow screens stack all six sections in the same order and provide state-jump navigation; no forced horizontal page scrolling or hover-only evidence. Keyboard-accessible Details opens within the card. No drag handles, draggable cards, drop targets, reorder persistence, status mutation, approve/cancel/execute buttons, or unrestricted commands are introduced. A future interactive transition workflow needs separate scope, command authorization, conflict and evidence design.
 
 The detailed presentation policy, priority rules, state-driven changes, and mockup interpretation are specified in [Agent-driven UI experience](AGENT_UI_EXPERIENCE.md).
 
 ### Agent and human payload contract
 
-This is the normative v1 read contract. The list/card surface, human Details, agent MCP view, and event notification are distinct projections of one canonical ledger. They do not maintain separate task state. A collapsed row is the current card presentation.
+This is the normative v1 read contract. The board/card surface, human Details, agent MCP view, and event notification are distinct projections of one canonical ledger. They do not maintain separate task state. Column placement is a deterministic presentation of canonical state, not a separate record.
 
 | View | Intended recipient | Permitted content |
 | --- | --- | --- |
-| `card` | Authenticated owner browser | Title, truthful status summary, next step, relevant time, visible material warnings |
+| `card` | Authenticated owner browser | Canonical state for grouping, title, truthful summary, next step, relevant time, visible warnings |
 | `details` | Authenticated owner browser after disclosure | Human explanation, scope summary, evidence provenance and observation times, minimized chronology |
 | `agent` | Authenticated, owner-scoped MCP principal | Coordination record below: canonical state, revisions, constraints, claims, dependencies, evidence, recovery context |
 | Event | Authorized subscriber | Tiny wake notification only; fetch the current task before acting |
@@ -150,9 +165,9 @@ Nested types are also required contracts:
 
 #### Human projections
 
-`card.data` requires `title: string`, `status_summary: string`, `next_step: string`, `resolver: agent|owner|external|none`, `relevant_time: {label:string,at:Instant|null}`, and `warnings: {reason_code:string,text:string}[]`. The canonical task state remains unchanged; summaries map from documented state/qualifier fields. Material blockers, stale projection, missed checks, and uncertain canceled outcomes must survive this projection without expanding Details. Relevant time null means no deadline or dependency timing, as labeled.
+`card.data` requires `title: string`, `canonical_state: State`, `status_summary: string`, `next_step: string`, `resolver: agent|owner|external|none`, `relevant_time: {label:string,at:Instant|null}`, and `warnings: {reason_code:string,text:string}[]`. Board grouping uses `canonical_state` directly; summaries map from documented state/qualifier fields and cannot override placement. Material blockers, stale projection, missed checks, and uncertain canceled outcomes must survive this projection without expanding Details. Relevant time null means no deadline or dependency timing, as labeled. This design-stage addition to the proposed 1.0 contract precedes any deployed client; future compatibility still follows the major/minor rules below.
 
-`details.data` requires `card` (the same card projection), `explanation: string`, `scope_summary: string`, `evidence: {summary:string,source_label:string,observed_at:Instant,recorded_at:Instant}[]`, `last_check_at: Instant|null`, and `history: {at:Instant,label:string,summary:string}[]`. Evidence observation time and envelope projection time are distinct. Human Details excludes IDs, revisions, leases, approval references, capabilities, fencing, and internal diagnostic payloads. Its entries are minimized and authorized, not a raw audit dump.
+`details.data` requires `card` (the same card projection), `explanation: string`, `scope_summary: string`, `evidence: {summary:string,source_label:string,observed_at:Instant,recorded_at:Instant}[]`, `last_check_at: Instant|null`, and `history: {at:Instant,label:string,summary:string}[]`. Evidence observation time and envelope projection time are distinct. Human data excludes coordination identities (principal/run/attempt), scope/completion revisions, leases, approval references, capabilities, fencing, and internal diagnostics. The minimal authorized envelope's opaque task ID and record/source versions support navigation and consistency; they are not displayed as task facts or authority. Entries are minimized and authorized, not a raw audit dump.
 
 #### Events, compatibility, and consistency
 
@@ -170,7 +185,7 @@ The [public synthetic JSON example](../mockups/agent-payload.example.json) follo
 
 1. Reject missing required fields, invalid types/enums, unexplained nulls, unknown major versions, and unsupported required extensions.
 2. Wrong-owner, revoked, and unauthorized-view requests fail without revealing resource existence. Caller-supplied owner/principal cannot widen access.
-3. Projection allowlist tests show browser HTML, network responses, client state, and A2UI model/actions contain no agent-only metadata or secrets.
+3. Canonical card state groups every task exactly once; unknown states produce a safe warning rather than guessed placement. Projection allowlist tests show browser HTML, network responses, client state, and A2UI model/actions contain no agent-only metadata or secrets.
 4. Card and Details agree with the same task version; stale projection and evidence age cannot be relabeled fresh. Older updates cannot replace newer state.
 5. Scope/completion changes invalidate earlier proof and cached action assumptions. Stale record/fence/revision writes fail; duplicate command receipts remain stable.
 6. Canceled-with-uncertainty remains visibly canceled and uncertain; no claim, retry, or resumption follows disclosure or read-only reconciliation.
@@ -295,7 +310,7 @@ WebMCP may later improve interaction with the browser page. Its tools depend on 
 
 A2UI is the desired pattern for future agent-driven presentation, subject to a separate implementation gate. The historical announcement described v0.8, while the current official site identifies v0.9.1 as the current production release and v1.0 as a candidate. Pin and retest the chosen protocol and catalog versions when implementation is authorized rather than coding to the announcement. [A2UI versions](https://a2ui.org/) · [A2UI v0.9.1](https://a2ui.org/specification/v0.9.1-a2ui/)
 
-Place an A2UI adapter after authentication, authorization, canonical queries, and a deterministic read-only view-model builder. The host owns a versioned component catalog that permits only ledger text, status, metadata, list, timeline, filter, navigation, and safe fallback components. Do not accept arbitrary HTML, JavaScript, CSS, code imports, URLs, or renderer functions from generated payloads. Validate payload size, depth, item counts, enum values, string lengths, catalog version, and component references on both sides of the boundary. Unknown or invalid content falls back to a safe text view without hiding the underlying task state. [A2UI catalogs](https://a2ui.org/concepts/catalogs/)
+Place an A2UI adapter after authentication, authorization, canonical queries, and a deterministic read-only view-model builder. The host owns a versioned component catalog that permits only ledger text, status, metadata, board/column/card, disclosure, timeline, filter, navigation, and safe fallback components. Do not accept arbitrary HTML, JavaScript, CSS, code imports, URLs, or renderer functions from generated payloads. Validate payload size, depth, item counts, enum values, string lengths, catalog version, and component references on both sides of the boundary. Unknown or invalid content falls back to a safe text view without hiding the underlying task state. [A2UI catalogs](https://a2ui.org/concepts/catalogs/)
 
 V1 actions are allowlisted presentation events only: select a task, change a filter, reset filters, change sort order, or navigate between approved views. They cannot mutate ledger state or invoke external work. Use explicit minimal action context and keep `sendDataModel` disabled so the renderer does not return its entire model. A2UI payloads and examples contain no credentials, task source bodies, signed URLs, private contacts, or free-form executable instructions. [A2UI actions](https://a2ui.org/concepts/actions/)
 
