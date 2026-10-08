@@ -20,13 +20,13 @@ The chosen direction is a compact, continuous list with Apple-inspired restraint
 
 **Desktop · synthetic design reference**
 
-![flipp textured-white list desktop prototype](https://raw.githubusercontent.com/ptw1255/flipp-work-ledger/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/screenshots/variant-a-desktop.png)
+![flipp textured-white list desktop prototype](https://raw.githubusercontent.com/ptw1255/flipp-work-ledger/a673b14/mockups/screenshots/variant-a-desktop.png)
 
 <details>
 <summary>Mobile preview</summary>
 
 <p>Canonical columns stack in the same order, with a state jump and Details expanding within each card. Synthetic data only.</p>
-<img src="https://raw.githubusercontent.com/ptw1255/flipp-work-ledger/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/screenshots/variant-a-mobile.png" width="390" alt="Compact mobile task list with expandable details">
+<img src="https://raw.githubusercontent.com/ptw1255/flipp-work-ledger/a673b14/mockups/screenshots/variant-a-mobile.png" width="390" alt="Compact mobile task list with expandable details">
 
 </details>
 
