@@ -140,6 +140,34 @@ Delete/restore tests span the declared recovery window. Restoration starts with 
 
 Run Clean Data Presentation review against actual final renders: desktop and mobile, zoom, default, attention/waiting, selected/expanded, search/empty/reset, stale and invalid-payload fallback. Check keyboard flow, visible focus, semantic reading order, no clipping/overflow, and non-color status cues. Capture exact-build screenshots and a concise evidence review; static mockup screenshots are not acceptance proof for the implemented renderer.
 
+### Pinned visual reference
+
+The current iteration to replicate is **Variant A, the compact continuous list**, at commit [868185dc54bbc5026b7489bd0ab586cb10d78916](https://github.com/ptw1255/flipp-work-ledger/tree/868185dc54bbc5026b7489bd0ab586cb10d78916). This reference records the latest design iteration; it is not blanket final UI approval. Variant B remains a comparison, not the default implementation target.
+
+| Reference | Pinned artifact |
+| --- | --- |
+| Interactive source | [Variant A HTML](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/variant-a-ledger.html) |
+| Styling and texture | [CSS](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/styles.css), [texture](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/texture.svg) |
+| Fixture and presentation | [Synthetic data](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/data.js), [presentation logic](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/app.js) |
+| Desktop, collapsed | [1440 × 960 PNG](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/screenshots/variant-a-desktop.png) |
+| Mobile, collapsed | [390 × 844 PNG](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/screenshots/variant-a-mobile.png) |
+| Mobile, expanded uncertainty | [390 × 844 Details PNG](https://github.com/ptw1255/flipp-work-ledger/blob/868185dc54bbc5026b7489bd0ab586cb10d78916/mockups/screenshots/variant-a-mobile-detail.png) |
+
+Visual acceptance under UI01/UI04 requires:
+
+- One continuous single-column list with quiet row dividers, rather than detached cards or a dashboard grid.
+- The subtle neutral texture, light shared surface, restrained orange attention cues, system typography, and quiet controls of the pinned source.
+- Comparable content width, row density, whitespace, title/status/next-step hierarchy, and time placement. Use the source values as the starting baseline rather than approximating from a thumbnail.
+- Collapsed rows keep title, truthful status/attention cue, next step, and relevant time. Technical IDs, revisions, leases, approval references, and agent payloads remain outside human client responses.
+- Details expands explanation, scope, evidence timing, and history within the row. It must not conceal a blocker or uncertain outcome on the collapsed surface.
+- Mobile retains the same list and reading order, with legible text, useful touch targets, visible focus, and no horizontal overflow. Expansion and filtering must not replace the page shell.
+
+Reproduce the pinned fixed synthetic fixture, 14:32 UTC projection time, viewport dimensions above, device scale factor 1, 100% zoom, and recorded browser/OS/font versions. Capture the default All work view with empty search and every disclosure closed, then the canceled-outcome row with Details open. For the mobile Details image, record the scroll position or row alignment. Capture implementation-only states such as stale projection and safe fallback separately; do not pretend the baseline image covers them.
+
+Review matching baseline/candidate renders side by side or with a screenshot diff. Before acceptance, document tolerances for layout geometry, spacing, wrapping, texture, and typography; record any deviations and reviewer disposition. Browser font rasterization may require manual review of text differences. No universal pixel-perfect threshold is assumed, and no numerical tolerance is approved yet. Missing semantics, clipping, changed status meaning, concealed uncertainty, or leaked metadata are failures regardless of visual similarity.
+
+Update the pinned baseline only after an agreed design revision, with its source commit, deterministic render state, new screenshots, and acceptance criteria recorded. Do not silently regenerate the reference to match implementation drift or remove meaning to match pixels. Clean Data Presentation and projection-security gates remain controlling.
+
 **Exit:** UI01–UI06 and C16 pass; actual supported A2UI renderer/version verified; human payload allowlists survive generated surfaces. If adapter compatibility fails, stop its pilot; a conventional deterministic UI requires an explicit documented presentation decision, not a claimed A2UI pass.
 
 **Recovery:** disable the generated adapter and serve the tested canonical fallback; preserve query authorization and read-only behavior. Roll back a renderer/catalog only to a compatible tested pair.
