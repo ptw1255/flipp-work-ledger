@@ -1,6 +1,6 @@
 # flipp Work Ledger PRD
 
-Version 0.1 · 8 October 2026 · For review
+Version 0.2 · 8 October 2026 · For review
 
 ## Product direction
 
@@ -23,9 +23,10 @@ This PRD defines the proposed MVP. It does not authorize implementation, deploym
 
 **Proposed for v1**
 
-- One human owner and one scoped assistant identity. Additional people and sharing require a separate decision.
+- One human owner and one primary scoped assistant identity. The data model and authorization boundaries should allow additional agent identities later without enabling them in the initial release. Additional people and sharing require a separate decision.
 - A task list, a task detail view, and an activity history, with changes requested through the existing conversation.
 - One authoritative task store with versioned mutations, durable wake scheduling, and recoverable event delivery.
+- A modular monolith with stable internal interfaces. Split services only when observed scaling, isolation, or operational needs justify the added complexity.
 - The Cloudflare component choices and retention defaults below, subject to review and a connectivity test.
 
 ### Goals and boundaries
@@ -60,11 +61,12 @@ A task waiting on approval uses Blocked with an approval reason. An expired work
 ### Minimum task record
 
 - **Identity and purpose:** stable task ID, short title, desired outcome, creation source reference, completion condition, and responsible actor.
+- **Relationships:** optional parent task, dependencies, delegated subtasks, and a join completion rule. These fields may remain unused in the single-agent MVP but should not require a disruptive schema redesign later.
 - **Scope:** version, allowed actions and destinations, relevant limits, approval status, and a reference to the instruction or approval. Preserve explicit exceptions.
 - **Progress:** state, next action, blocker or dependency, last checked time, acknowledgment time, start time, and verification time.
 - **Timing:** optional deadline, next eligible check, time zone, and any stopping condition. Store instants in UTC and retain the original IANA time zone for local-time schedules.
 - **Evidence:** concise observed result, observation time, and a source link or external result ID. Avoid copying source documents or messages.
-- **Execution:** record version, run and attempt IDs, idempotency key, claim expiry, cancellation revision, and delivery state.
+- **Execution:** record version, agent ID, run and attempt IDs, idempotency key, claim and fencing token, claim expiry, cancellation revision, and delivery state.
 
 Audit entries record the actor, time, operation, task version, changed fields, and relevant result reference. Record only the data needed to explain a change.
 
@@ -96,7 +98,21 @@ Use an idempotency key for each logical mutation and external operation where su
 
 A worker crash releases its claim only after lease expiry and reconciliation. If a request timed out after an external service may have accepted it, check for the original result before retrying. If that cannot be established, surface an uncertain outcome and block the repeated side effect. The product must not claim exactly-once execution across arbitrary external services.
 
+A renewed or replacement claim receives a newer fencing token. State writes and external-result attachments from a superseded worker are rejected even if that worker resumes late. Idempotency keys deduplicate the logical operation; fencing tokens prevent an old owner from writing after ownership has changed. Both controls are required.
+
 Commit state changes and pending notifications atomically through an outbox. Each outbox item has a stable event ID, retry state, and terminal failure reason. Retried or out-of-order events cause the assistant to read current task state before deciding what to do. Track callback receipt separately from the assistant fetching or claiming work. A reconciliation process detects missed schedules, expired claims, undelivered events, and delivered events that have not led to a task check. Recovery uses current state and the same deduplication rules.
+
+### Future delegation and parallel work
+
+The v1 operating model remains one primary assistant identity, but its contracts should support multiple scoped agent identities later. Each agent has a distinct ID, capability scope, and audit trail. A task has one active owner at a time. Parallel work uses explicit subtasks with parent and dependency relationships rather than several workers silently sharing ownership of one task.
+
+Delegation is a scoped mutation. Policy must define which identity may create a subtask, choose its assignee, change scope, approve completion, or accept a result into its parent. A delegating agent may narrow authority but cannot grant an action, destination, data source, or credential beyond the parent's approved scope or its own capabilities. Missing authority blocks the delegated task.
+
+Give each worker only the credentials and context required for its subtask. Record the delegator, assignee, scope version, supplied context references, result author, evidence, and every handoff. Shared results retain authorship and provenance when incorporated into a parent task. Content produced by another agent is untrusted evidence, not permission to expand scope.
+
+A handoff atomically ends the prior claim and issues a new fenced claim after the recipient accepts or becomes eligible. Cancellation or access revocation invalidates future claims, wakes, and result writes for the affected identity. An already-started external action still follows the uncertain-outcome and reconciliation rules.
+
+A parent task defines its join completion rule explicitly, such as all required subtasks completed, a named subset completed, or a decision task resolved. A parent cannot become Completed merely because workers returned responses; it must satisfy its own completion condition using accepted, attributable evidence. Failed, canceled, blocked, or superseded subtasks remain visible in the parent history.
 
 ## Cloudflare and assistant integration
 
@@ -109,6 +125,23 @@ Use a [SQLite-backed Durable Object](https://developers.cloudflare.com/durable-o
 Add a scheduled Worker reconciliation pass so exhausted alarm retries cannot silently strand due work. It checks the same authoritative store and repairs eligible scheduling or delivery state without replaying external actions. [Worker Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/)
 
 This is an architecture proposal, not a final storage commitment. If the connectivity test or workload justifies D1, Queues, or Workflows, document that change before implementation and keep one source of truth. Adding multiple orchestration systems is not a requirement for v1. Cloudflare offers remote MCP hosting patterns, but compatibility with the target client's event protocol must be tested separately. [Cloudflare MCP](https://developers.cloudflare.com/agents/model-context-protocol/)
+
+### Modular monolith boundaries
+
+Keep the v1 application deployable as one Worker plus its canonical Durable Object, while separating these modules behind stable, versioned interfaces:
+
+- **Task domain:** task state, scope versions, relationships, completion rules, evidence, and audit entries.
+- **Identity and authorization policy:** human and agent principals, capability scopes, delegation checks, and operation-level decisions.
+- **Orchestration and scheduler:** eligibility, claims, fenced leases, dependency release, join evaluation, alarms, and reconciliation.
+- **Event outbox and delivery:** event construction, subscriptions, signatures, retries, deduplication, and terminal delivery failures.
+- **Execution adapters and MCP:** narrow tool contracts and adapters for permitted external operations, without embedding task-state rules in an adapter.
+- **Query and UI:** read models, filters, task detail, and accessibility behavior, without direct mutation of authoritative storage.
+
+The task domain owns state invariants. Authorization is checked at each module boundary and again before consequential external actions. Orchestration requests domain mutations through commands rather than editing storage directly. Delivery publishes committed facts from the outbox. Query code reads derived views and cannot become a second source of truth.
+
+Define versioned command, result, and event schemas with compatibility rules and contract tests. Database changes use explicit, reversible migrations with a recorded schema version; readers tolerate an intentional compatibility window, while writers reject unknown contracts. Agent IDs, parent task IDs, dependency IDs, capability references, scope versions, fencing tokens, and idempotency keys are first-class fields even when the v1 interface uses only one agent and no parallel subtasks.
+
+These are code and ownership boundaries, not a requirement for microservices, separate databases, or separate deployments. Extract a service only when measurements show a clear need for independent scaling, stronger fault or security isolation, or a different release lifecycle, and preserve the same authorization and data contracts when doing so.
 
 ### Proposed tool surface
 
@@ -164,6 +197,7 @@ Retention jobs must cover the primary store, outbox, logs, and backups. Export, 
 8. A scope expansion or missing approval blocks the relevant action. A ledger field cannot bypass action-time approval requirements.
 9. Event subscription renewal, unsubscribe, revocation, replay handling, and callback rejection pass the connectivity and security tests. A disconnected assistant is visible as a delivery or connectivity problem.
 10. Privacy tests find no source-content copies or secrets in task records, logs, public assets, or fixtures. Retention and restoration tests honor deletion and cancellation.
+11. Contract tests keep module boundaries version-compatible across a schema migration. A simulated late worker cannot write through an expired fenced lease, and delegated or joined work cannot exceed parent authority or complete a parent without its stated join and evidence rules.
 
 ### Delivery sequence
 
@@ -181,3 +215,4 @@ Measure eligible-task-to-start delay, scheduled-check lateness, event-to-fetch d
 - Set retention, backup limits, deletion behavior, and any regional data requirements.
 - Choose acceptable check cadence, notification escalation, outage recovery expectations, and a spending limit before a pilot.
 - Define the small set of synthetic and then privately approved tasks that will establish the pilot baseline.
+- Before enabling multiple agents, define who may delegate, reassign, expand or narrow scope, accept results, and approve completion, plus the required credential isolation and revocation behavior.
