@@ -1,6 +1,6 @@
 # flipp Work Ledger implementation plan
 
-> Current visual direction: the compact expandable list in [Variant A](../mockups/variant-a-ledger.html) supersedes earlier kanban layout requirements below. One row shows title and meaningful status; updates and next steps expand on demand, with evidence and history behind a second disclosure. Preserve canonical state, visible cancellation uncertainty, authorized query boundaries, and the separate full agent payload. Acceptance requires desktop/mobile rendering, no horizontal overflow, keyboard disclosure, filters, empty results, and reset. This revision changes presentation only; implementation gates remain NOT RUN.
+> Current visual direction: exactly three independently scrollable presentation columns—Not Started, In Progress, and Completed—with canonical state and warnings visible. Completed is a deterministic owner-local-day log. Implementation gates remain NOT RUN.
 
 Version 0.2 · 8 October 2026 · Proposed; all implementation gates NOT RUN
 
@@ -136,7 +136,7 @@ Delete/restore tests span the declared recovery window. Restoration starts with 
 
 **Entry:** G4 passed; requested kanban presentation and protocol/catalog/renderer versions selected. A2UI compatibility is its own proof, separate from the already-passed wake loop.
 
-**Deliverables:** deterministic human projection; six canonical state columns with title/status/next-step/time cards; expandable explanation/evidence; visible blockers/uncertainty; view/search/reset/mobile state jump; no drag/drop mutation; host-owned versioned catalog; bounded adapter validation; canonical safe-text fallback. Keep technical agent metadata server-side. V1 controls are presentation-only. Keep `sendDataModel: false`.
+**Deliverables:** deterministic human projection; exactly three presentation columns with title/canonical-state/status/next-step/time cards; complete state mapping; bounded independent column scrolling; a verified-completion log sorted newest first and grouped by owner-local day; expandable explanation/evidence; visible blockers/uncertainty; view/search/reset/mobile column jump; no drag/drop mutation; host-owned versioned catalog; bounded adapter validation; canonical safe-text fallback. Keep technical agent metadata server-side. V1 controls are presentation-only. Keep `sendDataModel: false`.
 
 **Verification/evidence:** golden comparisons for every state and qualifier; canceled-with-uncertainty never looks resumed; old evidence never looks current because the page refreshed. Fuzz unknown protocol/catalog versions, component references, enum/action names, node counts, byte/string lengths and depth. Reject arbitrary code/HTML/CSS/imports, mutation actions, unsafe URLs, and full-model return. Invalid output must preserve state, blocker, next step, uncertainty, and freshness in fallback.
 
@@ -144,27 +144,28 @@ Run Clean Data Presentation review against actual final renders: desktop and mob
 
 ### Pinned visual reference
 
-The current iteration to replicate is **Variant A, the textured-white kanban board**, at commit [930ae7933b9ba5cea8da73a36b33288cee333b16](https://github.com/ptw1255/flipp-work-ledger/tree/930ae7933b9ba5cea8da73a36b33288cee333b16). This user-requested kanban iteration supersedes the previous continuous-list baseline; it is not blanket final UI approval or implementation authorization. Variant B remains a comparison, not the default implementation target.
+The current iteration to replicate is **Variant A, the textured-white three-column board**, in `main` with its source and screenshots committed together. It supersedes both the earlier six-column baseline at `930ae79` and the continuous-list iteration at `a673b14`; it is not blanket final UI approval or implementation authorization. Variant B remains a comparison, not the default implementation target.
 
 | Reference | Pinned artifact |
 | --- | --- |
-| Interactive source | [Variant A HTML](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/variant-a-ledger.html) |
-| Styling and texture | [CSS](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/styles.css), [texture](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/texture.svg) |
-| Fixture and presentation | [Synthetic data](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/data.js), [presentation logic](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/app.js) |
-| Desktop, collapsed | [1440 × 960 PNG](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/screenshots/variant-a-desktop.png) |
-| Mobile, collapsed | [390 × 844 PNG](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/screenshots/variant-a-mobile.png) |
-| Mobile, expanded uncertainty | [390 × 844 Details PNG](https://github.com/ptw1255/flipp-work-ledger/blob/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/screenshots/variant-a-mobile-detail.png) |
+| Interactive source | [Variant A HTML](../mockups/variant-a-ledger.html) |
+| Styling and texture | [CSS](../mockups/styles.css), [texture](../mockups/texture.svg) |
+| Fixture and presentation | [Synthetic data](../mockups/data.js), [presentation logic](../mockups/app.js) |
+| Desktop, collapsed | [1440 × 960 PNG](../mockups/screenshots/variant-a-desktop.png) |
+| Mobile, collapsed | [390 × 844 PNG](../mockups/screenshots/variant-a-mobile.png) |
+| Mobile, expanded uncertainty | [390 × 844 Details PNG](../mockups/screenshots/variant-a-mobile-detail.png) |
 
 Visual acceptance under UI01/UI04 requires:
 
-- Six columns map one-to-one to Queued, Running, Waiting externally, Blocked, Completed, and Canceled. Each card appears once. Attention qualifiers never create new states or disguise Blocked/Canceled as progress. Keep headings/counts and explicit filtered-empty columns.
+- Exactly three visible columns map canonical states completely: Queued/Blocked/Canceled → Not Started; Running/Waiting externally → In Progress; Completed → Completed. Each card appears once with its canonical label. Attention qualifiers never create state or disguise Blocked/Canceled as progress.
 - Apple-inspired textured white background, restrained frosted-glass cards, soft borders/shadows, orange attention cues, system typography, and quiet controls. Verify accessible text contrast, solid-white reduced-transparency fallback, and unsupported-blur fallback.
 - Comparable column/card widths and density, whitespace, title/status/next-step hierarchy, and time placement. Use the source values as the starting baseline rather than approximating from a thumbnail.
 - Collapsed cards keep title, truthful status/attention cue, next step, and relevant time. Coordination identities/revisions, leases, approval references, and the agent record remain outside human data; only the minimal authorized navigation/consistency envelope is delivered.
 - Details expands explanation, scope, evidence timing, and history within the card. It must not conceal a blocker or uncertain outcome on the collapsed surface.
-- Desktop shows six readable columns; intermediate widths wrap to three; mobile stacks six sections in the same order with a state-jump control that scrolls and focuses the heading. No horizontal page overflow, hover-only evidence, drag handles or drop targets. Canonical updates preserve/announce focus and card movement; filtering and disclosure never mutate state.
+- Desktop shows three readable columns with bounded independent vertical scrolling. Each scroll region is keyboard-focusable, labeled, visibly focused, and contains overscroll. Mobile stacks the same three sections with a column-jump control that scrolls and focuses the heading. No horizontal page overflow, hover-only evidence, drag handles, or drop targets. Canonical updates preserve/announce focus and movement; filtering, scrolling, and disclosure never mutate state.
+- Completed is sorted by authoritative completion time descending, grouped by the authenticated owner's local calendar day, with stable task-ID ties. Missing/invalid completion time is shown last under `Completion time unavailable`; no other clock is substituted. Canceled never appears in this log.
 
-Reproduce the pinned fixed synthetic fixture, 14:32 UTC projection time, viewport dimensions above, device scale factor 1, 100% zoom, and recorded browser/OS/font versions. Capture the default All work view with empty search and every disclosure closed, then the Canceled-column card with Details open. For the mobile Details image, record the scroll position or card alignment. Also capture the attention lens, empty columns/search, mobile state jump, and reduced-transparency fallback. Capture implementation-only states such as stale projection and safe fallback separately; do not pretend the baseline image covers them.
+Reproduce the pinned fixed synthetic fixture, 14:32 UTC projection time, owner timezone `America/New_York`, viewport dimensions above, device scale factor 1, 100% zoom, and recorded browser/OS/font versions. Capture the default All work view with every disclosure closed, then the Canceled card with Details open. Record independent scroll positions where relevant. Also capture the attention lens, empty columns/search, mobile column jump, completion day ordering/missing-time group, and reduced-transparency fallback. Capture implementation-only stale/fallback states separately.
 
 Review matching baseline/candidate renders side by side or with a screenshot diff. Before acceptance, document tolerances for layout geometry, spacing, wrapping, texture, and typography; record any deviations and reviewer disposition. Browser font rasterization may require manual review of text differences. No universal pixel-perfect threshold is assumed, and no numerical tolerance is approved yet. Missing semantics, clipping, changed status meaning, concealed uncertainty, or leaked metadata are failures regardless of visual similarity.
 

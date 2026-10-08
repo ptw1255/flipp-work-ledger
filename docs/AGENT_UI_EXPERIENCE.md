@@ -1,6 +1,6 @@
 # flipp Work Ledger agent-driven UI experience
 
-> Current visual direction: the compact expandable list in [Variant A](../mockups/variant-a-ledger.html) supersedes earlier kanban layout requirements below. One row shows title and meaningful status; updates and next steps expand on demand, with evidence and history behind a second disclosure. Preserve canonical state, visible cancellation uncertainty, authorized query boundaries, and the separate full agent payload. Acceptance requires desktop/mobile rendering, no horizontal overflow, keyboard disclosure, filters, empty results, and reset. This revision changes presentation only; implementation gates remain NOT RUN.
+> Current visual direction: exactly three independently scrollable board columns—Not Started, In Progress, and Completed. Canonical state and exceptions remain visible on each card. Completed is a local-day verified-done log; implementation gates remain NOT RUN.
 
 Version 0.3 · 8 October 2026 · For review
 
@@ -27,7 +27,7 @@ The page keeps four stable regions even as work changes:
 
 1. **Context bar:** quiet product name and view update time.
 2. **Presentation controls:** a small lens switcher, search, reset, and mobile state jump.
-3. **Kanban board:** six canonical state columns with simple title/status/next-step/time cards.
+3. **Kanban board:** exactly three presentation columns with title/canonical-state/status/next-step/time cards.
 4. **Progressive disclosure:** explanation, scope, evidence, and history expand inside the card without replacing the page.
 
 The human surface answers what happened, whether the owner needs to act, and what happens next. It uses Apple-inspired textured white styling, system typography, generous spacing, restrained frosted-glass cards, soft borders/shadows, and small orange attention cues. Maintain accessible contrast without depending on blur; reduced transparency or unsupported blur produces solid-white cards. No raw IDs, leases, revision numbers, payloads, audit tables, or repeated freshness labels appear by default.
@@ -40,22 +40,24 @@ An authenticated agent query returns a versioned coordination payload containing
 
 These are distinct authorized query contracts, not two stores. Hiding content in a disclosure is a presentation choice, not a security boundary. Server authorization and owner-scoped MCP queries enforce access. Private agent payloads are not embedded in HTML, returned through A2UI action context, or placed in client source. The static prototypes use public synthetic fixtures only. The [normative PRD payload contract](PRD.md#agent-and-human-payload-contract) controls the [synthetic example](../mockups/agent-payload.example.json); the example is not a backend endpoint.
 
-Desktop shows six readable columns; intermediate widths wrap into three columns; mobile stacks six sections in the same canonical order. State jump scrolls to and focuses the chosen heading. A canonical state change moves a card to its matching column and updates its text; the shell and column order remain stable. The implementation must preserve keyboard focus or announce a moved card's destination instead of silently losing it. There are no drag/drop or status-edit controls.
+Desktop shows exactly three readable columns. Each card region is bounded and independently scrollable; it is focusable, semantically labeled, visibly focused, and contains scroll chaining. Mobile stacks Not Started, In Progress, and Completed in that order, retaining bounded scrolling and a jump that focuses the chosen heading. A canonical state change deterministically remaps the card and updates its text; the shell and column order remain stable. Preserve focus or announce the destination. There are no drag/drop or status-edit controls.
 
 ## Canonical board mapping
 
 | Column | Canonical field value | Attention handling |
 | --- | --- | --- |
-| Queued | Queued | Show eligibility/next step; do not imply started |
-| Running | Running | Keep expired/stale claim cue on the card |
-| Waiting externally | Waiting externally | Show dependency/next check and missed-check cue |
-| Blocked | Blocked | Keep blocker and resolver visible |
-| Completed | Completed | Keep evidence-backed completion separate from cancellation |
-| Canceled | Canceled | Preserve uncertain outcome/read-only reconciliation; never imply rollback or resumption |
+| Not Started | Queued | Show eligibility/next step; do not imply started |
+| Not Started | Blocked | Keep canonical Blocked, blocker, and resolver visible |
+| Not Started | Canceled | Keep terminal Canceled and uncertainty visible; never imply rollback, resumption, or completion |
+| In Progress | Running | Keep expired/stale claim cue on the card |
+| In Progress | Waiting externally | Show that work began, plus dependency/next check and missed-check cue |
+| Completed | Completed | Admit only verified completion; never merge cancellation |
 
-Each task is displayed once, using `card.data.canonical_state` from the authorized human projection. The board creates no backend states, task-position store, or authority. Columns are categorical state groupings, not a linear funnel or percent complete. Attention qualifiers do not move cards into a different canonical column.
+Each task is displayed once, using `card.data.canonical_state` from the authorized human projection and the complete mapping above. The board creates no backend states, task-position store, or authority. Columns are presentation groupings, not a linear funnel or percent complete. Attention qualifiers do not move cards. Canceled is placed under Not Started only because it is inactive and not verified complete; its terminal semantics and no-resume rule remain explicit.
 
-All work is the initial board lens. Filters preserve all six headings with visible counts and explicit empty columns. Attention spans columns and includes uncertain Canceled and expired Running records. Search scope and reset remain visible. A change request goes through the existing chat and narrow versioned ledger commands; expanding Details or jumping columns does not perform work.
+Completed is a verified-done log. Sort authoritative `completed_at` descending, group by the authenticated owner's configured local calendar day, and use stable task ID ascending for equal timestamps. Put verified completions with no usable time after all timestamped groups under **Completion time unavailable**; never substitute evidence time, projection refresh, ingestion time, or the browser clock.
+
+All work is the initial board lens. Filters preserve all three headings with visible counts and explicit empty columns. Attention spans columns and includes uncertain Canceled and expired Running records. Search scope and reset remain visible. A change request goes through the existing chat and narrow versioned ledger commands; expanding Details, scrolling, or jumping columns does not perform work.
 
 ## Canonical lenses
 
@@ -112,9 +114,9 @@ MCP Events remains the wake path. A2UI changes presentation only after a current
 
 ## Prototype directions
 
-### A · Minimal kanban board
+### A · Three-column work board
 
-The selected direction supersedes the previous continuous-list baseline. Simple cards sit in six canonical columns on a subtle textured neutral background, with system typography and restrained orange attention cues. Mobile stacks the columns and offers a state jump. Details expands in the card. Technical agent metadata stays outside the human surface.
+The selected direction supersedes both the six-column and continuous-list baselines. Frosted-white cards sit in exactly three presentation columns on a subtle textured neutral background, with system typography and restrained orange attention cues. Every card retains its canonical state. Mobile stacks the columns and offers a column jump. Details expands in the card. Technical agent metadata stays outside the human surface.
 
 ### B · Attention and chronology
 
@@ -130,7 +132,7 @@ Before accepting either direction for implementation:
 - verify at least Queued → Running → Waiting and Running → Canceled-with-uncertainty paths without layout jump;
 - verify desktop and mobile widths, zoom, overflow, keyboard order, visible focus, semantic headings, and non-color state cues;
 - compare every displayed state and qualifier with a golden canonical projection;
-- verify one-card/one-canonical-column grouping, fixed headings/counts/empty columns under filters, and keyboard mobile state jump;
+- verify one-card/one-presentation-column mapping for every canonical state, fixed headings/counts/empty columns under filters, independent keyboard scrolling, completion ordering/day groups/missing-time group, and keyboard mobile column jump;
 - verify live canonical movement preserves focus or announces the destination without a drag/drop mutation affordance;
 - confirm there are no approve, cancel, retry, execute, claim, scope, credential, or environment controls;
 - confirm all examples and screenshots contain synthetic data only.

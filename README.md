@@ -16,21 +16,23 @@ The owner should not need to inspect leases, revision numbers, receipts, or an a
 
 ## A quiet view of the work
 
-The chosen direction is a compact, continuous list with Apple-inspired restraint. Each row shows only the task title and a meaningful status. Opening a row reveals its update and next step; evidence and history sit behind a second disclosure. Canceled work and uncertain outcomes remain explicit. The full agent contract stays separate from the human surface.
+The chosen direction is an Apple-inspired three-column board: **Not Started**, **In Progress**, and **Completed**. Each column scrolls independently inside the frame. Frosted-white cards keep the canonical state visible: Queued and Blocked map to Not Started; Running and Waiting externally map to In Progress; Canceled also remains outside Completed with a clear terminal label. Only evidence-verified work enters Completed.
 
 **Desktop · synthetic design reference**
 
-![flipp textured-white list desktop prototype](https://raw.githubusercontent.com/ptw1255/flipp-work-ledger/a673b14/mockups/screenshots/variant-a-desktop.png)
+![flipp textured-white three-column board desktop prototype](mockups/screenshots/variant-a-desktop.png)
 
 <details>
 <summary>Mobile preview</summary>
 
-<p>Canonical columns stack in the same order, with a state jump and Details expanding within each card. Synthetic data only.</p>
-<img src="https://raw.githubusercontent.com/ptw1255/flipp-work-ledger/a673b14/mockups/screenshots/variant-a-mobile.png" width="390" alt="Compact mobile task list with expandable details">
+<p>The three columns stack in the same order, retain bounded scrolling, and offer a keyboard-accessible column jump. Synthetic data only.</p>
+<img src="mockups/screenshots/variant-a-mobile.png" width="390" alt="Mobile three-column work board with bounded scrolling and truthful canonical state labels">
 
 </details>
 
-These are static interactive mockups, not a live product or verified A2UI integration. The pinned iteration is the implementation reference; future design revisions remain reviewable. [Open list source](mockups/variant-a-ledger.html) · [Expanded mobile Details](mockups/screenshots/variant-a-mobile-detail.png) · [Visual acceptance criteria](docs/IMPLEMENTATION_PLAN.md#pinned-visual-reference). Variant B is retained for comparison. The list has no state-changing controls; decisions stay coordinated in chat. Reduced transparency uses a solid-white surface.
+These are static interactive mockups, not a live product or verified A2UI integration. The current repository commit is the pinned implementation reference. [Open board source](mockups/variant-a-ledger.html) · [Expanded mobile Details](mockups/screenshots/variant-a-mobile-detail.png) · [Visual acceptance criteria](docs/IMPLEMENTATION_PLAN.md#pinned-visual-reference). Variant B is retained for comparison. There is no drag/drop or status-edit control; decisions stay coordinated in chat. Reduced transparency uses solid-white cards.
+
+Completed is a verified-done log: authoritative completion timestamps sort descending, entries are grouped by the owner's local day, equal timestamps break by stable task ID, and missing completion times appear in a separate **Completion time unavailable** group instead of being guessed.
 
 ## What the MVP is designed to do
 

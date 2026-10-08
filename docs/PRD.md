@@ -1,6 +1,6 @@
 # flipp Work Ledger PRD
 
-> Current visual direction: the compact expandable list in [Variant A](../mockups/variant-a-ledger.html) supersedes earlier kanban layout requirements below. One row shows title and meaningful status; updates and next steps expand on demand, with evidence and history behind a second disclosure. Preserve canonical state, visible cancellation uncertainty, authorized query boundaries, and the separate full agent payload. Acceptance requires desktop/mobile rendering, no horizontal overflow, keyboard disclosure, filters, empty results, and reset. This revision changes presentation only; implementation gates remain NOT RUN.
+> Current visual direction: exactly three visible board columns—Not Started, In Progress, and Completed—with independently scrollable frames. This presentation mapping does not change canonical task state. Cards keep their canonical state and material warnings visible; implementation gates remain NOT RUN.
 
 Version 0.8 · 8 October 2026 · For review
 
@@ -64,7 +64,7 @@ Proposed pilot guardrails are one owner, one primary assistant identity, at most
 
 ## Owner experience
 
-The default view is a minimalist kanban board with one column for each canonical state. Each task card shows a title, plain-language status or attention cue, one next step, and relevant time. State and approval changes stay coordinated with flipp in the existing chat; board placement is derived from the ledger, not an editable status field.
+The default view is a minimalist board with exactly three presentation columns. Each task card shows a title, canonical state, plain-language status or attention cue, one next step, and relevant time. State and approval changes stay coordinated with flipp in the existing chat; board placement is a deterministic projection, not an editable status field.
 
 Details expand within the card to show a short explanation, scope, evidence, and history. Evidence observation time is separate from view refresh time. Technical IDs, versions, leases, and approval references belong in the authenticated agent payload. Blockers, missed checks, and uncertain outcomes remain visible on the collapsed card. On phones the columns stack in canonical order with a keyboard-accessible state jump control.
 
@@ -75,29 +75,31 @@ The initial interface is read-only apart from navigation and filtering. Requests
 - Use an Apple-inspired textured white background, clear system typography, and restrained frosted-glass task cards with soft borders/shadows. Maintain accessible text contrast; reduced-transparency preference or unsupported blur uses solid-white cards. No oversized metrics or decorative charts. Orange attention cues stay small and never carry state alone.
 - Make each card useful without interaction: title, truthful state summary, one next step, relevant time, and any material exception. Column headings name canonical states; positioning cannot disguise Blocked or Canceled as progress.
 - Put the explanation, task scope, evidence provenance, and history in optional Details. Keep technical coordination metadata in the authenticated agent payload. Distinguish evidence observation time from view refresh time; material uncertainty and stale projection warnings stay visible without disclosure.
-- Preserve the canonical state names: Queued, Running, Waiting externally, Blocked, Completed, and Canceled. Show stale or expired claims, missed checks, delivery failures, and uncertain outcomes as explicit qualifiers rather than inventing new canonical states.
+- Preserve the canonical state names: Queued, Running, Waiting externally, Blocked, Completed, and Canceled. Map Queued and Blocked to Not Started; Running and Waiting externally to In Progress; and only Completed to Completed. Canceled maps to Not Started because it is inactive and not verified done, but must be visibly terminal and never look restartable. Uncertain outcomes remain attached to their canonical state.
 - A canceled task with an uncertain external outcome remains Canceled. The interface may show its read-only reconciliation status but cannot imply that work resumed or the external action was reversed.
 - Filters disclose their active scope and have a clear reset. Empty results explain which filters are active. Navigation, filtering, search, and detail selection work with a keyboard and at mobile widths.
 - V1 is read-only apart from presentation controls. Do not include approve, complete, cancel, retry, execute, scope-change, credential, or environment-selection controls.
 - Every rendered status comes from an authenticated canonical projection or deterministic view model. Presentation generation cannot invent progress, hide a blocker, upgrade evidence, or turn callback receipt into completion.
 - Provide a separate authenticated agent coordination payload with revisions, claims, scope, constraints, evidence, timing, and recovery context. The human UI receives a smaller projection; private agent payloads are never embedded in browser source or A2UI action context.
 
-The selected design is Variant A's textured, minimalist kanban board. The prior continuous-list baseline is superseded. Variant B remains a comparison attention view. These synthetic prototypes are review artifacts, not production UI or evidence that A2UI is integrated.
+The selected design is Variant A's textured, minimalist three-column board. Both the earlier six-column board and continuous-list iteration are superseded. Variant B remains a comparison attention view. These synthetic prototypes are review artifacts, not production UI or evidence that A2UI is integrated.
 
 ### Board state mapping and interaction
 
 | Board column, in display order | Canonical state | Required behavior |
 | --- | --- | --- |
-| Queued | Queued | Eligibility and next step; never imply actual start |
-| Running | Running | Actual running state; expired claim stays visible rather than silently moved |
-| Waiting externally | Waiting externally | Named dependency, next check, and any missed-check cue |
-| Blocked | Blocked | Visible reason and resolver; not grouped into Running |
-| Completed | Completed | Evidence-backed terminal state; not merged with Canceled |
-| Canceled | Canceled | Terminal cancellation with uncertain outcome or read-only reconciliation cue when relevant |
+| Not Started | Queued | Eligibility and next step; never imply actual start |
+| Not Started | Blocked | Visible reason and resolver; canonical Blocked label remains visible |
+| Not Started | Canceled | Terminal and not complete; no execution cue; uncertainty/read-only reconciliation retained |
+| In Progress | Running | Actual running state; expired claim stays visible rather than silently moved |
+| In Progress | Waiting externally | Work began but is waiting; dependency, next check, and missed-check cue remain visible |
+| Completed | Completed | Evidence-backed terminal state only; never merge or infer Canceled as done |
 
-Every card appears in exactly one column, derived from `canonical_state`, not a model's title/status inference. Columns are categories, not a promise that every task follows a linear path or earns a progress percentage. Qualifiers never create backend states or relocate tasks. Attention is a cross-column filter; it must include uncertain canceled outcomes and stale/missed conditions. Preserve all six headings and disclose visible/total counts when filters make columns empty. Unknown states fail to a safe canonical warning rather than guessing a column.
+Every card appears in exactly one of the three presentation columns through the complete mapping above, derived from `canonical_state`, never a model's title/status inference. Columns are categories, not a promise of a linear workflow or progress percentage. Qualifiers never create backend states or relocate tasks. Attention spans columns and includes uncertain canceled outcomes and stale/missed conditions. Preserve all three headings and disclose counts when filters make columns empty. Unknown states fail to a safe canonical warning rather than guessing a column.
 
-Desktop shows six columns when readable, with a three-column wrap at intermediate widths. Narrow screens stack all six sections in the same order and provide state-jump navigation; no forced horizontal page scrolling or hover-only evidence. Keyboard-accessible Details opens within the card. No drag handles, draggable cards, drop targets, reorder persistence, status mutation, approve/cancel/execute buttons, or unrestricted commands are introduced. A future interactive transition workflow needs separate scope, command authorization, conflict and evidence design.
+Desktop shows the three columns in one row. Each card region has a bounded height and independent vertical scrolling with keyboard focus, visible focus treatment, contained overscroll, and semantic labeling. Narrow screens stack Not Started, In Progress, then Completed; each section remains bounded and a keyboard-accessible column jump focuses its heading. There is no forced horizontal page scrolling or hover-only evidence. Details opens within the card. No drag handles, draggable cards, drop targets, reorder persistence, status mutation, approve/cancel/execute buttons, or unrestricted commands are introduced.
+
+Completed is a verified-done log, not a generic progress bucket. It sorts by authoritative `completed_at` descending, groups by the authenticated owner's configured local calendar day, and breaks equal timestamps by stable task ID ascending. A verified completion without a usable timestamp appears after timestamped groups under **Completion time unavailable**, also ordered by stable task ID; the renderer never substitutes projection time, evidence time, or client clock.
 
 The detailed presentation policy, priority rules, state-driven changes, and mockup interpretation are specified in [Agent-driven UI experience](AGENT_UI_EXPERIENCE.md).
 
