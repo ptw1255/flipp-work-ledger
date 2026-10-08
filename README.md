@@ -10,6 +10,8 @@ Planning and product review. This repository currently documents the proposed MV
 
 Start with the [product requirements document](docs/PRD.md).
 
+The proposed technical shape, contracts, recovery model, and unresolved implementation decisions are in the [system design](docs/SYSTEM_DESIGN.md).
+
 ## Proposed scope
 
 - Versioned task state, explicit approval scope, and evidence-backed completion

@@ -1,6 +1,6 @@
 # flipp Work Ledger PRD
 
-Version 0.3 · 8 October 2026 · For review
+Version 0.4 · 8 October 2026 · For review
 
 ## Product direction
 
@@ -9,6 +9,8 @@ flipp Work Ledger is a private execution ledger for an assistant and its owner. 
 The assistant uses the ledger as an execution engine. The owner continues to discuss priorities, scope changes, and decisions in chat. The interface should be useful without becoming another place the owner has to maintain tasks manually.
 
 This PRD defines the proposed MVP. It does not authorize implementation, deployment, spending, account connections, or persistent access. Public source code and documentation must remain separate from private runtime data.
+
+The companion [system design](SYSTEM_DESIGN.md) turns these product boundaries into proposed components, data contracts, invariants, recovery paths, and tests. It remains a design for review, not an implementation authorization.
 
 ### Decisions and proposals
 
@@ -37,6 +39,25 @@ Included: task capture, scoped execution state, due checks, external waits, evid
 
 The ledger orchestrates task state, not the assistant's computers or tools. In this document, orchestration means determining task eligibility, coordinating claims and dependencies, scheduling wakes, emitting attention events, and recording observations and outcomes. The assistant remains responsible for choosing whether and how to use its available cloud tools, Mac environment, or other authorized integrations. If the required environment or tool is unavailable, the assistant records a generic blocker without asking the ledger to discover, connect to, or manage a machine.
 
+### Product constraints
+
+These constraints are release boundaries, not optional implementation preferences:
+
+1. **Ledger, not executor.** The ledger never performs external actions, selects an execution environment, manages a desktop connection, inventories machines, or holds credentials for the assistant's external services. It records work, coordinates ledger ownership and timing, wakes the assistant, and accepts observations or results.
+2. **Private runtime, minimal data.** Owner task data is private. Store concise task state, approval references, and evidence references rather than source messages, inbox contents, attachments, contact records, or copied documents. Public code, docs, examples, and fixtures use synthetic data only.
+3. **Authority stays explicit.** A task or event records existing authority; it cannot create authority. Event payloads, source content, delegated results, and ledger fields are untrusted input and cannot expand scope. Action-time requirements still apply in the assistant's execution environment.
+4. **One owner in v1.** The first release has one human owner and one primary assistant identity. Future multi-agent fields and interfaces must not weaken v1 isolation or introduce implicit shared ownership.
+5. **One source of truth.** The canonical ledger state, version checks, claims, schedules, audit facts, and outbox live in one authoritative store for v1. Read models and events are derived and cannot mutate truth independently.
+6. **Duplicate-safe ledger changes.** Mutations use expected versions and idempotency keys. Claims use expirations and fencing generations. Late workers, duplicate requests, retried alarms, repeated callbacks, and out-of-order events cannot silently repeat or overwrite accepted ledger state. These controls cannot lock, reverse, or prove the status of an already-started external action.
+7. **Cancellation wins over future ledger work.** Cancellation invalidates future wakes and claims. A stale worker cannot record a successful completion after its claim or cancellation revision is superseded. Already-started external actions are preserved as observed or uncertain outcomes, not hidden, and may receive read-only reconciliation that cannot reopen execution.
+8. **Failure is visible.** Missed wakes, expired claims, exhausted deliveries, disconnected subscriptions, unavailable tools, uncertain external results, and reconciliation repairs appear in task state or diagnostic history with a next step.
+9. **Events are attention signals.** Delivery acknowledgment means receipt only. It does not prove that the assistant fetched, claimed, started, or completed a task. The assistant always rereads current ledger state before acting.
+10. **No platform claim without a test.** Documentation may identify supported primitives, but remote MCP authentication, MCP Events, chat resumption, revocation, and reconnect behavior remain unverified until the synthetic end-to-end gate passes in the intended client.
+11. **Cost needs a limit.** The design should be free-tier-oriented and low-traffic by default, but no free-tier availability or zero-cost operation is assumed. Deployment, paid plans, and a monthly spending cap require separate approval.
+12. **Modular without distributed-system overhead.** Keep stable domain boundaries and versioned contracts inside a modular monolith. Do not add services, databases, queues, or orchestration products without evidence that their isolation or scale benefit exceeds their reliability and operating cost.
+
+Proposed pilot guardrails are one owner, one primary assistant identity, at most 100 open tasks, 10,000 retained tasks, 100,000 audit entries, and one mutation per second with a short burst of 10. These are review values, not approved entitlements or performance promises. A five-minute claim lease with renewal after roughly one minute and reconciliation every five minutes are starting hypotheses that must be validated against actual assistant behavior and platform cost. The pilot has no hard assistant-start service-level agreement.
+
 ## Owner experience
 
 The default view groups work into Queued, Running, Waiting externally, Blocked, Completed, and Canceled. Each row shows the outcome, responsible actor, deadline when present, last check, and next action. Sorting should make overdue checks and unresolved blockers easy to find without inventing a new urgency level for every task.
@@ -58,17 +79,17 @@ The initial interface is read-only apart from navigation and filtering. Requests
 
 Acknowledged, started, and verified complete are separate milestones. A successful event delivery is only delivery. A claim is only ownership of an attempt. Neither is proof that the requested work happened.
 
-A task waiting on approval uses Blocked with an approval reason. An expired worker claim cannot leave a task appearing actively Running indefinitely. Completed and Canceled tasks do not resume automatically; reopening requires a new recorded instruction and scope version.
+A task waiting on approval uses Blocked with an approval reason. An expired worker claim cannot leave a task appearing actively Running indefinitely. Completed and Canceled tasks do not resume automatically; reopening requires a new recorded instruction and scope revision.
 
 ### Minimum task record
 
 - **Identity and purpose:** stable task ID, short title, desired outcome, creation source reference, completion condition, and responsible actor.
 - **Relationships:** optional parent task, dependencies, delegated subtasks, and a join completion rule. These fields may remain unused in the single-agent MVP but should not require a disruptive schema redesign later.
-- **Scope:** version, allowed actions and destinations, relevant limits, approval status, and a reference to the instruction or approval. Preserve explicit exceptions.
+- **Scope:** revision, allowed actions and destinations, relevant limits, approval status, and a reference to the instruction or approval. Preserve explicit exceptions.
 - **Progress:** state, next action, blocker or dependency, last checked time, acknowledgment time, start time, and verification time.
 - **Timing:** optional deadline, next eligible check, time zone, and any stopping condition. Store instants in UTC and retain the original IANA time zone for local-time schedules.
 - **Evidence:** concise observed result, observation time, and a source link or external result ID. Avoid copying source documents or messages.
-- **Execution:** record version, agent ID, run and attempt IDs, idempotency key, claim and fencing token, claim expiry, cancellation revision, and delivery state.
+- **Execution:** record version, agent ID, run and attempt IDs, idempotency key, claim and fencing generation, claim expiry, cancellation revision, and delivery state.
 
 Audit entries record the actor, time, operation, task version, changed fields, and relevant result reference. Record only the data needed to explain a change.
 
@@ -80,7 +101,7 @@ Audit entries record the actor, time, operation, task version, changed fields, a
 2. The ledger commits the task and an acknowledgment milestone. Immediate work becomes eligible; future work receives a durable wake time.
 3. The assistant reads the current record and atomically claims it against the expected version. Competing claims cannot both succeed.
 4. Before acting, the assistant checks current scope, cancellation, and applicable action-time permissions. It records the attempt start separately from its claim.
-5. After the action, it records the observed outcome and evidence. Only a satisfied completion condition permits Completed.
+5. After the action, it records the observed outcome and evidence. The assistant verifies real-world truth and authority at action time. The ledger validates the allowed transition plus evidence presence, attribution, and consistency with the current scope revision; it does not independently prove the external outcome. Only a satisfied completion condition permits Completed.
 
 ### Wait and resume
 
@@ -90,7 +111,7 @@ The ledger does not gain access to email or calendar by storing a link. Lack of 
 
 ### Change or cancel
 
-A chat instruction creates a new scope version. A running worker must reread that version before its next consequential action. Cancellation records a new revision, prevents new claims, and invalidates future wakes.
+A chat instruction creates a new scope revision. A running worker must reread that revision before its next consequential action. Cancellation records a new revision, prevents new claims, and invalidates future wakes.
 
 An in-flight external action may already have happened. In that case, preserve its observed result and show that cancellation did not undo it. An unresolved external outcome remains visible and may require read-only reconciliation. Do not relabel it as a successful rollback or automatically issue a compensating action without authority.
 
@@ -100,7 +121,7 @@ Use an idempotency key for each logical mutation and external operation where su
 
 A worker crash releases its claim only after lease expiry and reconciliation. If a request timed out after an external service may have accepted it, check for the original result before retrying. If that cannot be established, surface an uncertain outcome and block the repeated side effect. The product must not claim exactly-once execution across arbitrary external services.
 
-A renewed or replacement claim receives a newer fencing token. State writes and external-result attachments from a superseded worker are rejected even if that worker resumes late. Idempotency keys deduplicate the logical operation; fencing tokens prevent an old owner from writing after ownership has changed. Both controls are required.
+An ordinary lease renewal by the same active run preserves its fencing generation. Replacement, reassignment, or recovery after expiry receives a newer generation. Ledger state writes and external-result attachments from a superseded worker are rejected even if that worker resumes late. Idempotency keys deduplicate the logical ledger operation; fencing prevents an old owner from writing after ownership has changed. Neither control can prevent or undo an external action that already started.
 
 Commit state changes and pending notifications atomically through an outbox. Each outbox item has a stable event ID, retry state, and terminal failure reason. Retried or out-of-order events cause the assistant to read current task state before deciding what to do. Track callback receipt separately from the assistant fetching or claiming work. A reconciliation process detects missed schedules, expired claims, undelivered events, and delivered events that have not led to a task check. Recovery uses current state and the same deduplication rules.
 
@@ -110,7 +131,7 @@ The v1 operating model remains one primary assistant identity, but its contracts
 
 Delegation is a scoped mutation. Policy must define which identity may create a subtask, choose its assignee, change scope, approve completion, or accept a result into its parent. A delegating agent may narrow authority but cannot grant an action, destination, data source, or credential beyond the parent's approved scope or its own capabilities. Missing authority blocks the delegated task.
 
-The assistant-side execution environment gives each worker only the credentials and context required for its subtask; the ledger does not hold or distribute credentials for external services or machines. The ledger records the delegator, assignee, scope version, supplied context references, result author, evidence, and every handoff. Shared results retain authorship and provenance when incorporated into a parent task. Content produced by another agent is untrusted evidence, not permission to expand scope.
+The assistant-side execution environment gives each worker only the credentials and context required for its subtask; the ledger does not hold or distribute credentials for external services or machines. The ledger records the delegator, assignee, scope revision, supplied context references, result author, evidence, and every handoff. Shared results retain authorship and provenance when incorporated into a parent task. Content produced by another agent is untrusted evidence, not permission to expand scope.
 
 A handoff atomically ends the prior claim and issues a new fenced claim after the recipient accepts or becomes eligible. Cancellation or access revocation invalidates future claims, wakes, and result writes for the affected identity. An already-started external action still follows the uncertain-outcome and reconciliation rules.
 
@@ -122,7 +143,7 @@ A parent task defines its join completion rule explicitly, such as all required 
 
 Use a Cloudflare Worker for the authenticated web application and remote MCP endpoint. Keep authentication for a person using the browser separate from authentication for the assistant's server-to-server tools. All routes must enforce owner and operation-level authorization. Keep remote MCP transport stateless at the Worker boundary; the Durable Object below holds application state. [Cloudflare MCP transport](https://developers.cloudflare.com/agents/model-context-protocol/protocol/transport/)
 
-The remote MCP endpoint is the ledger's control and reporting interface. It lets the assistant read and update task state, claim eligible work, record evidence, and manage ledger events. It does not proxy arbitrary external operations, choose between cloud and Mac execution, establish desktop sessions, inventory machines, or store credentials for the services the assistant uses. The assistant performs authorized external work through its existing execution environments and integrations, then reports the result or blocker back to the ledger.
+The remote MCP endpoint is the ledger's control and reporting interface. It lets the assistant read task state, request narrow transitions, claim eligible work, record evidence, and manage ledger events. It does not proxy arbitrary external operations, choose between cloud and Mac execution, establish desktop sessions, inventory machines, or store credentials for the services the assistant uses. The assistant performs authorized external work through its existing execution environments and integrations, then reports the result or blocker back to the ledger.
 
 Use a [SQLite-backed Durable Object](https://developers.cloudflare.com/durable-objects/best-practices/access-durable-objects-storage/) as the single authoritative ledger for the initial single-owner deployment. It holds tasks, claims, audit entries, and the event outbox. Serialize mutations there and schedule the earliest pending wake with an alarm. Persist later wake times in the ledger and reschedule after processing. Cloudflare documents that alarms have at-least-once execution and retries; handlers must therefore tolerate repeats. [Durable Objects alarms](https://developers.cloudflare.com/durable-objects/api/alarms/)
 
@@ -134,7 +155,7 @@ This is an architecture proposal, not a final storage commitment. If the connect
 
 Keep the v1 application deployable as one Worker plus its canonical Durable Object, while separating these modules behind stable, versioned interfaces:
 
-- **Task domain:** task state, scope versions, relationships, completion rules, evidence, and audit entries.
+- **Task domain:** task state, scope revisions, relationships, completion rules, evidence, and audit entries.
 - **Identity and authorization policy:** human and agent principals, capability scopes, delegation checks, and operation-level decisions.
 - **Orchestration and scheduler:** eligibility, claims, fenced leases, dependency release, join evaluation, alarms, and reconciliation.
 - **Event outbox and delivery:** event construction, subscriptions, signatures, retries, deduplication, and terminal delivery failures.
@@ -143,13 +164,13 @@ Keep the v1 application deployable as one Worker plus its canonical Durable Obje
 
 The task domain owns state invariants. Ledger authorization is checked at each module boundary. The assistant-side executor separately checks authorization again before consequential external actions. Ledger orchestration requests domain mutations through commands rather than editing storage directly. Delivery publishes committed facts from the outbox. Query code reads derived views and cannot become a second source of truth.
 
-Define versioned command, result, and event schemas with compatibility rules and contract tests. Database changes use explicit, reversible migrations with a recorded schema version; readers tolerate an intentional compatibility window, while writers reject unknown contracts. Agent IDs, parent task IDs, dependency IDs, capability references, scope versions, fencing tokens, and idempotency keys are first-class fields even when the v1 interface uses only one agent and no parallel subtasks.
+Define versioned command, result, and event schemas with compatibility rules and contract tests. Database changes use explicit, reversible migrations with a recorded schema version; readers tolerate an intentional compatibility window, while writers reject unknown contracts. Agent IDs, parent task IDs, dependency IDs, capability references, scope revisions, fencing generations, and idempotency keys are first-class fields even when the v1 interface uses only one agent and no parallel subtasks.
 
 These are code and ownership boundaries, not a requirement for microservices, separate databases, or separate deployments. Extract a service only when measurements show a clear need for independent scaling, stronger fault or security isolation, or a different release lifecycle, and preserve the same authorization and data contracts when doing so.
 
 ### Proposed tool surface
 
-Expose narrow operations to list and read tasks, create or update scoped records, claim eligible work, renew a claim, record observations and results, cancel a task, and read its audit history. Mutations require an idempotency key and expected version where applicable. Return the resulting record version and enough information to verify the operation. Do not expose arbitrary SQL, arbitrary network requests, credential access, or permission administration as task tools.
+Expose narrow operations to list and read tasks; create work; revise scope; claim, renew, and start an attempt; observe, wait, block, complete, cancel, or reconcile read-only; and read audit history. Do not expose a generic state-update operation. Mutations require an idempotency key, canonical input hash, and expected record version. Return a stable mutation receipt and enough information to verify the operation. Do not expose arbitrary SQL, arbitrary network requests, credential access, or permission administration as task tools.
 
 ### Event contract
 
@@ -185,6 +206,8 @@ These defaults need owner approval before private data is stored:
 - On a deletion request, stop related schedules and subscriptions and make the records inaccessible promptly. Permanent deletion requires the applicable confirmation.
 - Define the maximum backup retention and restoration behavior before launch. A restore must not resurrect canceled work, deleted data, or revoked access. Record any non-content tombstone needed to enforce that behavior.
 
+Cloudflare currently documents 30-day point-in-time recovery for SQLite-backed Durable Objects. A primary-store deletion therefore does not imply immediate erasure from every recoverable point. Before launch, define the resulting recoverability window, owner-facing deletion language, and tombstone or post-restore reconciliation needed to prevent restored data from reviving work. [Durable Object storage and point-in-time recovery](https://developers.cloudflare.com/durable-objects/best-practices/access-durable-objects-storage/)
+
 Retention jobs must cover the primary store, outbox, logs, and backups. Export, deletion timing, residency needs, and recovery objectives remain review decisions.
 
 ## Acceptance and release
@@ -199,7 +222,7 @@ Retention jobs must cover the primary store, outbox, logs, and backups. Export, 
 6. A waiting task resumes when its approved condition is observed. Time-zone and daylight-saving tests preserve the intended local-time schedule; ambiguous times are resolved explicitly.
 7. Cancellation racing with a claim or callback prevents new work. An already-started external action is reported honestly, with reconciliation when needed.
 8. A scope expansion or missing approval blocks the relevant action. A ledger field cannot bypass action-time approval requirements.
-9. Event subscription renewal, unsubscribe, revocation, replay handling, and callback rejection pass the connectivity and security tests. A disconnected assistant is visible as a delivery or connectivity problem.
+9. Event subscription renewal, unsubscribe, revocation, replay handling, and callback rejection pass the connectivity and security tests. Failed, expired, or revoked subscriptions are visible, and the UI can report that no subsequent task check was recorded without inferring whether an assistant environment is connected.
 10. Privacy tests find no source-content copies or secrets in task records, logs, public assets, or fixtures. Retention and restoration tests honor deletion and cancellation.
 11. Contract tests keep module boundaries version-compatible across a schema migration. A simulated late worker cannot write through an expired fenced lease, and delegated or joined work cannot exceed parent authority or complete a parent without its stated join and evidence rules.
 
