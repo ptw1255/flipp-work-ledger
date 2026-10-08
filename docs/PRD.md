@@ -1,6 +1,6 @@
 # flipp Work Ledger PRD
 
-Version 0.2 · 8 October 2026 · For review
+Version 0.3 · 8 October 2026 · For review
 
 ## Product direction
 
@@ -33,7 +33,9 @@ This PRD defines the proposed MVP. It does not authorize implementation, deploym
 
 The MVP should make unfinished work visible, resume eligible work after waits, and distinguish acknowledgment from execution and verified completion. It should make failures and uncertainty legible rather than silently dropping work or presenting stale progress as current.
 
-Included: task capture, scoped execution state, due checks, external waits, evidence, audit history, cancellation, and private access. Excluded: a new chat application, a general project-management suite, shared family or team accounts, direct inbox ingestion, financial-data aggregation, and a replacement for the assistant's existing tools or permissions.
+Included: task capture, scoped execution state, due checks, external waits, evidence, audit history, cancellation, and private access. Excluded: a new chat application, a general project-management suite, shared family or team accounts, direct inbox ingestion, financial-data aggregation, a replacement for the assistant's existing tools or permissions, execution-environment selection, desktop connection management, external-service credential custody, and execution of external actions.
+
+The ledger orchestrates task state, not the assistant's computers or tools. In this document, orchestration means determining task eligibility, coordinating claims and dependencies, scheduling wakes, emitting attention events, and recording observations and outcomes. The assistant remains responsible for choosing whether and how to use its available cloud tools, Mac environment, or other authorized integrations. If the required environment or tool is unavailable, the assistant records a generic blocker without asking the ledger to discover, connect to, or manage a machine.
 
 ## Owner experience
 
@@ -108,7 +110,7 @@ The v1 operating model remains one primary assistant identity, but its contracts
 
 Delegation is a scoped mutation. Policy must define which identity may create a subtask, choose its assignee, change scope, approve completion, or accept a result into its parent. A delegating agent may narrow authority but cannot grant an action, destination, data source, or credential beyond the parent's approved scope or its own capabilities. Missing authority blocks the delegated task.
 
-Give each worker only the credentials and context required for its subtask. Record the delegator, assignee, scope version, supplied context references, result author, evidence, and every handoff. Shared results retain authorship and provenance when incorporated into a parent task. Content produced by another agent is untrusted evidence, not permission to expand scope.
+The assistant-side execution environment gives each worker only the credentials and context required for its subtask; the ledger does not hold or distribute credentials for external services or machines. The ledger records the delegator, assignee, scope version, supplied context references, result author, evidence, and every handoff. Shared results retain authorship and provenance when incorporated into a parent task. Content produced by another agent is untrusted evidence, not permission to expand scope.
 
 A handoff atomically ends the prior claim and issues a new fenced claim after the recipient accepts or becomes eligible. Cancellation or access revocation invalidates future claims, wakes, and result writes for the affected identity. An already-started external action still follows the uncertain-outcome and reconciliation rules.
 
@@ -119,6 +121,8 @@ A parent task defines its join completion rule explicitly, such as all required 
 ### Proposed architecture
 
 Use a Cloudflare Worker for the authenticated web application and remote MCP endpoint. Keep authentication for a person using the browser separate from authentication for the assistant's server-to-server tools. All routes must enforce owner and operation-level authorization. Keep remote MCP transport stateless at the Worker boundary; the Durable Object below holds application state. [Cloudflare MCP transport](https://developers.cloudflare.com/agents/model-context-protocol/protocol/transport/)
+
+The remote MCP endpoint is the ledger's control and reporting interface. It lets the assistant read and update task state, claim eligible work, record evidence, and manage ledger events. It does not proxy arbitrary external operations, choose between cloud and Mac execution, establish desktop sessions, inventory machines, or store credentials for the services the assistant uses. The assistant performs authorized external work through its existing execution environments and integrations, then reports the result or blocker back to the ledger.
 
 Use a [SQLite-backed Durable Object](https://developers.cloudflare.com/durable-objects/best-practices/access-durable-objects-storage/) as the single authoritative ledger for the initial single-owner deployment. It holds tasks, claims, audit entries, and the event outbox. Serialize mutations there and schedule the earliest pending wake with an alarm. Persist later wake times in the ledger and reschedule after processing. Cloudflare documents that alarms have at-least-once execution and retries; handlers must therefore tolerate repeats. [Durable Objects alarms](https://developers.cloudflare.com/durable-objects/api/alarms/)
 
@@ -134,10 +138,10 @@ Keep the v1 application deployable as one Worker plus its canonical Durable Obje
 - **Identity and authorization policy:** human and agent principals, capability scopes, delegation checks, and operation-level decisions.
 - **Orchestration and scheduler:** eligibility, claims, fenced leases, dependency release, join evaluation, alarms, and reconciliation.
 - **Event outbox and delivery:** event construction, subscriptions, signatures, retries, deduplication, and terminal delivery failures.
-- **Execution adapters and MCP:** narrow tool contracts and adapters for permitted external operations, without embedding task-state rules in an adapter.
+- **Ledger API and MCP adapter:** narrow contracts for task reads, state transitions, claims, observations, results, and event subscriptions, without arbitrary external-operation or machine-control tools.
 - **Query and UI:** read models, filters, task detail, and accessibility behavior, without direct mutation of authoritative storage.
 
-The task domain owns state invariants. Authorization is checked at each module boundary and again before consequential external actions. Orchestration requests domain mutations through commands rather than editing storage directly. Delivery publishes committed facts from the outbox. Query code reads derived views and cannot become a second source of truth.
+The task domain owns state invariants. Ledger authorization is checked at each module boundary. The assistant-side executor separately checks authorization again before consequential external actions. Ledger orchestration requests domain mutations through commands rather than editing storage directly. Delivery publishes committed facts from the outbox. Query code reads derived views and cannot become a second source of truth.
 
 Define versioned command, result, and event schemas with compatibility rules and contract tests. Database changes use explicit, reversible migrations with a recorded schema version; readers tolerate an intentional compatibility window, while writers reject unknown contracts. Agent IDs, parent task IDs, dependency IDs, capability references, scope versions, fencing tokens, and idempotency keys are first-class fields even when the v1 interface uses only one agent and no parallel subtasks.
 
