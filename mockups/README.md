@@ -2,7 +2,7 @@
 
 These static prototypes compare two read-only interface directions using the same synthetic task data:
 
-- [Variant A: kanban board](variant-a-ledger.html) — the selected direction: six canonical state columns with textured-white styling and restrained frosted-glass cards. Details expands explanation and evidence.
+- [Variant A: compact list](variant-a-ledger.html) — selected direction: one continuous list, title and status per row, with native expandable updates and deeper evidence. Agent records remain separate.
 - [Variant B: attention](variant-b-attention.html) — a comparison direction with a short queue and selected update.
 
 The human surface shows only the information needed to understand work and its next step. [The synthetic agent payload example](agent-payload.example.json) retains coordination fields for an authorized agent query. Hidden UI is not access control: a real implementation must keep that payload server-side and enforce owner-scoped authorization.

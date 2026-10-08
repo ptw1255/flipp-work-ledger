@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>flipp — Work board</title><link rel="stylesheet" href="styles.css"></head>
-<body data-variant="a" class="kanban-view">
-<header><span class="brand">flipp</span><span class="prototype-label">Kanban prototype</span><span class="freshness">View updated 14:32 UTC</span></header>
-<main class="shell"><div class="intro"><h1>Your work, at a glance.</h1><p>A quiet board. Every task in its actual state.</p></div>
+<body data-variant="a" class="ledger-view">
+<header><span class="brand">flipp</span><span class="prototype-label">List prototype</span><span class="freshness">View updated 14:32 UTC</span></header>
+<main class="shell"><div class="intro"><h1>Your work.</h1></div>
 <section class="toolbar" aria-label="Work filters"><div class="segments" aria-label="View"><button type="button" data-lens="all">All work</button><button type="button" data-lens="attention">Attention</button><button type="button" data-lens="waiting">Waiting</button></div><label class="sr-only" for="search">Search tasks</label><input class="search" id="search" type="search" placeholder="Search" autocomplete="off"><button class="reset" id="reset" type="button">Reset</button></section>
-<div class="board-context"><span class="card-count" id="active-scope" aria-live="polite"></span><label class="mobile-jump">Jump to <select id="state-jump"><option value="">Choose state</option><option value="queued">Queued</option><option value="running">Running</option><option value="waiting-externally">Waiting externally</option><option value="blocked">Blocked</option><option value="completed">Completed</option><option value="canceled">Canceled</option></select></label></div>
-<section class="kanban-board" id="task-list" aria-label="Work by canonical state"></section><p class="empty" id="empty" hidden>No matches. Try another view or reset.</p>
+<div class="board-context"><span class="card-count" id="active-scope" aria-live="polite"></span></div>
+<ol class="minimal-ledger" id="task-list" aria-label="Work list"></ol><p class="empty" id="empty" hidden>No matches. Try another view or reset.</p>
 <p class="footer-note">Static prototype · synthetic data</p></main><script src="data.js"></script><script src="app.js"></script>
 </body></html>

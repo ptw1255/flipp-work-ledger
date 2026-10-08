@@ -16,21 +16,21 @@ The owner should not need to inspect leases, revision numbers, receipts, or an a
 
 ## A quiet view of the work
 
-The chosen direction is a minimalist kanban board with Apple-inspired textured white styling and restrained frosted-glass cards. Six columns use the actual ledger states. Each card shows a title, status, next step, and relevant time; Details expands explanation and evidence. Blocked and Canceled remain separate, with uncertainty visible before expansion. The earlier continuous-list design is superseded.
+The chosen direction is a compact, continuous list with Apple-inspired restraint. Each row shows only the task title and a meaningful status. Opening a row reveals its update and next step; evidence and history sit behind a second disclosure. Canceled work and uncertain outcomes remain explicit. The full agent contract stays separate from the human surface.
 
 **Desktop · synthetic design reference**
 
-![flipp textured-white kanban desktop prototype](https://raw.githubusercontent.com/ptw1255/flipp-work-ledger/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/screenshots/variant-a-desktop.png)
+![flipp textured-white list desktop prototype](https://raw.githubusercontent.com/ptw1255/flipp-work-ledger/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/screenshots/variant-a-desktop.png)
 
 <details>
 <summary>Mobile preview</summary>
 
 <p>Canonical columns stack in the same order, with a state jump and Details expanding within each card. Synthetic data only.</p>
-<img src="https://raw.githubusercontent.com/ptw1255/flipp-work-ledger/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/screenshots/variant-a-mobile.png" width="390" alt="Mobile kanban prototype with stacked state columns, state jump, and card Details">
+<img src="https://raw.githubusercontent.com/ptw1255/flipp-work-ledger/930ae7933b9ba5cea8da73a36b33288cee333b16/mockups/screenshots/variant-a-mobile.png" width="390" alt="Compact mobile task list with expandable details">
 
 </details>
 
-These are static interactive mockups, not a live product or verified A2UI integration. The pinned iteration is the implementation reference; future design revisions remain reviewable. [Open kanban source](mockups/variant-a-ledger.html) · [Expanded mobile Details](mockups/screenshots/variant-a-mobile-detail.png) · [Visual acceptance criteria](docs/IMPLEMENTATION_PLAN.md#pinned-visual-reference). Variant B is retained for comparison. The board has no drag/drop state changes or action buttons; decisions stay coordinated in chat. Reduced transparency uses solid-white cards.
+These are static interactive mockups, not a live product or verified A2UI integration. The pinned iteration is the implementation reference; future design revisions remain reviewable. [Open list source](mockups/variant-a-ledger.html) · [Expanded mobile Details](mockups/screenshots/variant-a-mobile-detail.png) · [Visual acceptance criteria](docs/IMPLEMENTATION_PLAN.md#pinned-visual-reference). Variant B is retained for comparison. The list has no state-changing controls; decisions stay coordinated in chat. Reduced transparency uses a solid-white surface.
 
 ## What the MVP is designed to do
 
