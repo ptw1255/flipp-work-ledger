@@ -1,12 +1,12 @@
 # flipp Work Ledger PRD
 
-Version 0.5 · 8 October 2026 · For review
+Version 0.6 · 8 October 2026 · For review
 
 ## Product direction
 
-flipp Work Ledger is a private execution ledger for an assistant and its owner. It keeps approved work moving, records what actually happened, and gives the owner a read-mostly view of progress. The central question is simple: what is being worked on, what happens next, and what evidence supports that status?
+flipp Work Ledger is a private durable work-state and coordination layer for an assistant and its owner. It keeps approved work visible, records what actually happened, and gives the owner a read-mostly view of progress. The central question is simple: what is being worked on, what happens next, and what evidence supports that status?
 
-The assistant uses the ledger as an execution engine. The owner continues to discuss priorities, scope changes, and decisions in chat. The interface should be useful without becoming another place the owner has to maintain tasks manually.
+The assistant uses the ledger to coordinate task state, timing, ownership, and evidence. It performs actual work through its existing authorized environments and tools. The owner continues to discuss priorities, scope changes, and decisions in chat. The interface should be useful without becoming another place the owner has to maintain tasks manually.
 
 This PRD defines the proposed MVP. It does not authorize implementation, deployment, spending, account connections, or persistent access. Public source code and documentation must remain separate from private runtime data.
 
@@ -67,6 +67,21 @@ The default view groups work into Queued, Running, Waiting externally, Blocked, 
 A task detail view shows its scope, approval reference, completion condition, current status evidence, upcoming check, and chronological activity. It distinguishes the age of the underlying evidence from the last time the page refreshed. Missing evidence or a missed check must be visible in text, not color alone. The interface should work on a narrow screen and support keyboard navigation.
 
 The initial interface is read-only apart from navigation and filtering. Requests to change scope, pause work, resume work, or cancel go through chat. A conversation link may be shown only when a supported, verified link exists.
+
+### Interface requirements
+
+- Use a compact, neutral, evidence-first layout rather than oversized metric cards or decorative charts. A restrained orange accent may identify selection or attention, but color is never the only state cue.
+- Make the default view useful without interaction. Show canonical state, next action, relevant deadline or next check, and the specific exception that needs attention.
+- Keep task scope, evidence provenance, and status history close to the selected task. Distinguish when evidence was observed from when the page or projection was refreshed.
+- Preserve the canonical state names: Queued, Running, Waiting externally, Blocked, Completed, and Canceled. Show stale or expired claims, missed checks, delivery failures, and uncertain outcomes as explicit qualifiers rather than inventing new canonical states.
+- A canceled task with an uncertain external outcome remains Canceled. The interface may show its read-only reconciliation status but cannot imply that work resumed or the external action was reversed.
+- Filters disclose their active scope and have a clear reset. Empty results explain which filters are active. Navigation, filtering, search, and detail selection work with a keyboard and at mobile widths.
+- V1 is read-only apart from presentation controls. Do not include approve, complete, cancel, retry, execute, scope-change, credential, or environment-selection controls.
+- Every rendered status comes from an authenticated canonical projection or deterministic view model. Presentation generation cannot invent progress, hide a blocker, upgrade evidence, or turn callback receipt into completion.
+
+The initial design exploration compares two views using identical synthetic state semantics: a compact ledger list with adjacent details, and a focused attention queue with chronological work history. The prototypes are review artifacts, not production UI or evidence that A2UI is integrated.
+
+The detailed presentation policy, priority rules, state-driven changes, and mockup interpretation are specified in [Agent-driven UI experience](AGENT_UI_EXPERIENCE.md).
 
 ### Task states
 
@@ -181,6 +196,16 @@ OpenAI documents MCP Events for dots and supported Work chats, using MCP 2.0, au
 Propose one initial application event, `task.needs_attention`, filtered to the authorized owner. Its payload contains only an event ID, task ID, task version, occurrence time, and a short reason. The assistant fetches the current task through MCP. Emit only when work becomes eligible or an unresolved check becomes due; routine progress writes must not create self-triggering loops. Event data and source text are untrusted input and cannot expand the task's authorization.
 
 WebMCP may later improve interaction with the browser page. Its tools depend on the page being available, so it is optional and cannot supply the unattended wake path. [Site tools](https://learn.chatgpt.com/docs/webmcp)
+
+### A2UI presentation direction
+
+A2UI is the desired pattern for future agent-driven presentation, subject to a separate implementation gate. The historical announcement described v0.8, while the current official site identifies v0.9.1 as the current production release and v1.0 as a candidate. Pin and retest the chosen protocol and catalog versions when implementation is authorized rather than coding to the announcement. [A2UI versions](https://a2ui.org/) · [A2UI v0.9.1](https://a2ui.org/specification/v0.9.1-a2ui/)
+
+Place an A2UI adapter after authentication, authorization, canonical queries, and a deterministic read-only view-model builder. The host owns a versioned component catalog that permits only ledger text, status, metadata, list, timeline, filter, navigation, and safe fallback components. Do not accept arbitrary HTML, JavaScript, CSS, code imports, URLs, or renderer functions from generated payloads. Validate payload size, depth, item counts, enum values, string lengths, catalog version, and component references on both sides of the boundary. Unknown or invalid content falls back to a safe text view without hiding the underlying task state. [A2UI catalogs](https://a2ui.org/concepts/catalogs/)
+
+V1 actions are allowlisted presentation events only: select a task, change a filter, reset filters, change sort order, or navigate between approved views. They cannot mutate ledger state or invoke external work. Use explicit minimal action context and keep `sendDataModel` disabled so the renderer does not return its entire model. A2UI payloads and examples contain no credentials, task source bodies, signed URLs, private contacts, or free-form executable instructions. [A2UI actions](https://a2ui.org/concepts/actions/)
+
+MCP Events remains the unattended wake path. A2UI may describe the authenticated view after the assistant or owner requests it; it does not replace event subscription, scheduling, canonical task fetch, or the private owner UI's authorization boundary.
 
 ### Connectivity gate before implementation
 

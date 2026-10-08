@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>flipp Work Ledger — Prototype A</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><strong>flipp Work Ledger</strong><span>private owner view</span></div>
+    <span class="prototype-label">Prototype A · compact ledger</span>
+    <div class="freshness"><strong>Page projection</strong> · refreshed 14:32 UTC</div>
+  </header>
+
+  <section class="toolbar" aria-label="Task filters">
+    <label>State
+      <select id="state-filter">
+        <option value="all">All states</option>
+        <option>Queued</option>
+        <option>Running</option>
+        <option>Waiting externally</option>
+        <option>Blocked</option>
+        <option>Completed</option>
+        <option>Canceled</option>
+      </select>
+    </label>
+    <label>Scope
+      <select id="scope-filter">
+        <option value="all">All synthetic work</option>
+        <option value="connectivity">Connectivity gate</option>
+        <option value="policy">Policy review</option>
+        <option value="reconciliation">Reconciliation</option>
+      </select>
+    </label>
+    <label>Find
+      <input id="search" type="search" placeholder="Search tasks" autocomplete="off">
+    </label>
+    <button class="reset" id="reset" type="button">Reset</button>
+    <span class="active-scope" id="active-scope" aria-live="polite">Showing all 6 synthetic tasks</span>
+  </section>
+
+  <main class="ledger-layout">
+    <nav class="rail" aria-label="State navigation">
+      <h2>States</h2>
+      <ul id="state-nav"></ul>
+    </nav>
+
+    <section class="task-list-panel" aria-labelledby="list-title">
+      <div class="panel-heading">
+        <h1 id="list-title">What needs inspection?</h1>
+        <p>Ordered by exception, then next check. State labels are canonical; qualifiers are diagnostic.</p>
+      </div>
+      <ol class="task-list" id="task-list"></ol>
+      <div class="empty" id="empty" hidden>No tasks match the active filters. Reset filters to restore the full synthetic ledger.</div>
+    </section>
+
+    <article class="detail-panel" id="detail" aria-live="polite"></article>
+  </main>
+
+  <script src="data.js"></script>
+  <script>
+    const tasks = window.ledgerTasks;
+    const helpers = window.ledgerHelpers;
+    const list = document.querySelector('#task-list');
+    const detail = document.querySelector('#detail');
+    const stateFilter = document.querySelector('#state-filter');
+    const scopeFilter = document.querySelector('#scope-filter');
+    const search = document.querySelector('#search');
+    const empty = document.querySelector('#empty');
+    const activeScope = document.querySelector('#active-scope');
+    let selectedId = 'task_synth_104';
+
+    const scopeGroup = task => {
+      if (/connectivity|callback|reconnect/i.test(task.scope + task.title)) return 'connectivity';
+      if (/retention|policy/i.test(task.scope + task.title)) return 'policy';
+      if (/reconcil/i.test(task.scope + task.title)) return 'reconciliation';
+      return 'other';
+    };
+
+    function visibleTasks() {
+      const query = search.value.trim().toLowerCase();
+      return tasks.filter(task => {
+        const stateMatches = stateFilter.value === 'all' || task.state === stateFilter.value;
+        const scopeMatches = scopeFilter.value === 'all' || scopeGroup(task) === scopeFilter.value;
+        const queryMatches = !query || `${task.title} ${task.state} ${task.qualifier} ${task.next}`.toLowerCase().includes(query);
+        return stateMatches && scopeMatches && queryMatches;
+      });
+    }
+
+    function renderNav() {
+      const states = ['All work', 'Queued', 'Running', 'Waiting externally', 'Blocked', 'Completed', 'Canceled'];
+      document.querySelector('#state-nav').innerHTML = states.map(state => {
+        const value = state === 'All work' ? 'all' : state;
+        const count = state === 'All work' ? tasks.length : tasks.filter(task => task.state === state).length;
+        const current = stateFilter.value === value;
+        return `<li><button type="button" data-state-value="${value}" aria-current="${current}"><span>${state}</span><small>${count}</small></button></li>`;
+      }).join('');
+      document.querySelectorAll('[data-state-value]').forEach(button => button.addEventListener('click', () => {
+        stateFilter.value = button.dataset.stateValue;
+        render();
+      }));
+    }
+
+    function renderDetail(task) {
+      if (!task) {
+        detail.innerHTML = `<div class="empty">Select a task to inspect its scope, evidence, and timing.</div>`;
+        return;
+      }
+      detail.innerHTML = `
+        <div class="detail-header">
+          <div>
+            <div class="task-row-top">${helpers.stateMarkup(task)} ${helpers.qualifierMarkup(task)}</div>
+            <h1>${helpers.escape(task.title)}</h1>
+            <p>${helpers.escape(task.outcome)}</p>
+          </div>
+        </div>
+        <section class="section">
+          <h2>Next action</h2>
+          <div class="next-action">${helpers.escape(task.next)}</div>
+        </section>
+        <section class="section">
+          <h2>State path</h2>
+          ${helpers.statePath(task)}
+        </section>
+        <section class="section">
+          <h2>Task facts</h2>
+          <dl class="facts">
+            <div><dt>Scope</dt><dd>${helpers.escape(task.scope)}</dd></div>
+            <div><dt>Timing</dt><dd>${helpers.escape(task.due)}</dd></div>
+            <div><dt>Last task check</dt><dd>${helpers.escape(task.lastCheck)}</dd></div>
+            <div><dt>Page projection</dt><dd>${helpers.escape(task.freshness)}</dd></div>
+            <div><dt>Task ID</dt><dd>${helpers.escape(task.id)}</dd></div>
+          </dl>
+        </section>
+        <section class="section">
+          <h2>Latest evidence</h2>
+          <div class="evidence">
+            <p>${helpers.escape(task.evidence)}</p>
+            <p class="evidence-time"><strong>Observed</strong> ${helpers.escape(task.observedAt)} · synthetic evidence</p>
+          </div>
+        </section>
+        <p class="footer-note">Static design prototype. Navigation and filters only. Not connected to a ledger, assistant, Cloudflare, MCP Events, or A2UI.</p>`;
+    }
+
+    function render() {
+      const visible = visibleTasks();
+      if (!visible.some(task => task.id === selectedId)) selectedId = visible[0]?.id || null;
+      list.innerHTML = visible.map(task => `
+        <li class="task-row">
+          <button type="button" data-task-id="${task.id}" aria-current="${task.id === selectedId}">
+            <div class="task-row-top">${helpers.stateMarkup(task)} ${helpers.qualifierMarkup(task)}</div>
+            <div class="task-title">${helpers.escape(task.title)}</div>
+            <div class="task-next">${helpers.escape(task.next)}</div>
+            <div class="task-meta"><span>Checked ${helpers.escape(task.lastCheck)}</span><span>${helpers.escape(task.due)}</span></div>
+          </button>
+        </li>`).join('');
+      empty.hidden = visible.length !== 0;
+      activeScope.textContent = `Showing ${visible.length} of ${tasks.length} synthetic tasks`;
+      list.querySelectorAll('[data-task-id]').forEach(button => button.addEventListener('click', () => {
+        selectedId = button.dataset.taskId;
+        render();
+        if (window.matchMedia('(max-width: 760px)').matches) detail.scrollIntoView({block: 'start'});
+      }));
+      renderNav();
+      renderDetail(tasks.find(task => task.id === selectedId));
+    }
+
+    [stateFilter, scopeFilter].forEach(control => control.addEventListener('change', render));
+    search.addEventListener('input', render);
+    document.querySelector('#reset').addEventListener('click', () => {
+      stateFilter.value = 'all';
+      scopeFilter.value = 'all';
+      search.value = '';
+      selectedId = 'task_synth_104';
+      render();
+      stateFilter.focus();
+    });
+    render();
+  </script>
+</body>
+</html>

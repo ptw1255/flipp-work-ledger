@@ -1,6 +1,6 @@
 # flipp Work Ledger
 
-A proposed private execution ledger for an assistant and its owner, hosted on Cloudflare.
+A proposed private durable work-state and coordination layer for an assistant and its owner, with a Cloudflare-oriented design.
 
 The assistant operates the ledger. The owner gets a read-mostly view of what is queued, running, waiting, blocked, completed, or canceled, with a clear next action and evidence behind each status. Scope changes and decisions stay in the existing chat.
 
@@ -13,6 +13,10 @@ Start with the [product requirements document](docs/PRD.md).
 The [constraint acceptance matrix](docs/CONSTRAINTS.md) assigns stable IDs to the product boundaries and defines how each one becomes enforceable and testable.
 
 The proposed technical shape, contracts, recovery model, and unresolved implementation decisions are in the [system design](docs/SYSTEM_DESIGN.md).
+
+Two responsive, synthetic-data-only interface directions are available in [mockups](mockups/README.md). They are static design prototypes, not a working ledger or A2UI integration.
+
+The [agent-driven UI experience](docs/AGENT_UI_EXPERIENCE.md) defines how flipp selects what to surface while keeping layout, state semantics, and evidence bindings stable.
 
 ## Proposed scope
 

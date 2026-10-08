@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>flipp Work Ledger — Prototype B</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><strong>flipp Work Ledger</strong><span>private owner view</span></div>
+    <span class="prototype-label">Prototype B · attention + chronology</span>
+    <div class="freshness"><strong>Page projection</strong> · refreshed 14:32 UTC</div>
+  </header>
+
+  <section class="toolbar" aria-label="Attention filters">
+    <label>Attention
+      <select id="attention-filter">
+        <option value="attention">Needs attention</option>
+        <option value="all">All work</option>
+        <option value="blocked">Blocked or uncertain</option>
+        <option value="timing">Overdue or stale</option>
+      </select>
+    </label>
+    <label>Sort
+      <select id="sort-order">
+        <option value="priority">Exception first</option>
+        <option value="state">Canonical state</option>
+        <option value="title">Task title</option>
+      </select>
+    </label>
+    <button class="reset" id="reset" type="button">Reset view</button>
+    <span class="active-scope" id="active-scope" aria-live="polite">Showing tasks that need attention</span>
+  </section>
+
+  <main class="attention-layout">
+    <section class="attention-panel" aria-labelledby="attention-title">
+      <div class="panel-heading">
+        <h1 id="attention-title">What needs attention now?</h1>
+        <p>Reasons are ledger observations, not inferred machine or assistant status.</p>
+      </div>
+      <ol class="attention-list" id="attention-list"></ol>
+      <div class="empty" id="empty" hidden>No tasks match this view. Reset to restore the attention queue.</div>
+    </section>
+
+    <article class="chronology-panel" id="chronology" aria-live="polite"></article>
+  </main>
+
+  <script src="data.js"></script>
+  <script>
+    const tasks = window.ledgerTasks;
+    const helpers = window.ledgerHelpers;
+    const list = document.querySelector('#attention-list');
+    const chronology = document.querySelector('#chronology');
+    const attentionFilter = document.querySelector('#attention-filter');
+    const sortOrder = document.querySelector('#sort-order');
+    const empty = document.querySelector('#empty');
+    const activeScope = document.querySelector('#active-scope');
+    let selectedId = 'task_synth_107';
+
+    const priority = new Map([
+      ['task_synth_107', 1], ['task_synth_104', 2], ['task_synth_101', 3],
+      ['task_synth_103', 4], ['task_synth_105', 5], ['task_synth_099', 6]
+    ]);
+
+    function visibleTasks() {
+      let visible = tasks.filter(task => {
+        if (attentionFilter.value === 'all') return true;
+        if (attentionFilter.value === 'blocked') return task.state === 'Blocked' || /uncertain/i.test(task.qualifier);
+        if (attentionFilter.value === 'timing') return /missed|expired/i.test(task.qualifier);
+        return task.state !== 'Completed';
+      });
+      return visible.sort((a, b) => {
+        if (sortOrder.value === 'title') return a.title.localeCompare(b.title);
+        if (sortOrder.value === 'state') return a.state.localeCompare(b.state) || a.title.localeCompare(b.title);
+        return priority.get(a.id) - priority.get(b.id);
+      });
+    }
+
+    function renderChronology(task) {
+      if (!task) {
+        chronology.innerHTML = `<div class="empty">Select an attention item to inspect its chronology.</div>`;
+        return;
+      }
+      chronology.innerHTML = `
+        <div class="chronology-head">
+          <div>
+            <div class="task-row-top">${helpers.stateMarkup(task)} ${helpers.qualifierMarkup(task)}</div>
+            <h1>${helpers.escape(task.title)}</h1>
+            <p>${helpers.escape(task.outcome)}</p>
+          </div>
+          <div class="summary-box">
+            <strong>Next action</strong>
+            <span>${helpers.escape(task.next)}</span>
+          </div>
+        </div>
+        <section class="section">
+          <h2>State path</h2>
+          ${helpers.statePath(task)}
+        </section>
+        <section class="section">
+          <h2>Scope and timing</h2>
+          <dl class="facts">
+            <div><dt>Scope</dt><dd>${helpers.escape(task.scope)}</dd></div>
+            <div><dt>Timing</dt><dd>${helpers.escape(task.due)}</dd></div>
+            <div><dt>Evidence observed</dt><dd>${helpers.escape(task.observedAt)}</dd></div>
+            <div><dt>Page projection</dt><dd>${helpers.escape(task.freshness)}</dd></div>
+          </dl>
+        </section>
+        <section class="section">
+          <h2>Chronological work record</h2>
+          <ol class="timeline">
+            ${task.chronology.map(entry => `
+              <li>
+                <time>${helpers.escape(entry[0])}</time>
+                <span class="timeline-marker" aria-hidden="true"></span>
+                <div><div class="timeline-title">${helpers.escape(entry[1])}</div><div class="timeline-detail">${helpers.escape(entry[2])}</div></div>
+              </li>`).join('')}
+          </ol>
+        </section>
+        <section class="section">
+          <h2>Latest evidence</h2>
+          <div class="evidence"><p>${helpers.escape(task.evidence)}</p><p class="evidence-time"><strong>Observed</strong> ${helpers.escape(task.observedAt)} · synthetic evidence</p></div>
+        </section>
+        <p class="footer-note">Static design prototype. Presentation controls only. Not connected to a ledger, assistant, Cloudflare, MCP Events, or A2UI.</p>`;
+    }
+
+    function render() {
+      const visible = visibleTasks();
+      if (!visible.some(task => task.id === selectedId)) selectedId = visible[0]?.id || null;
+      list.innerHTML = visible.map(task => `
+        <li class="attention-row">
+          <button type="button" data-task-id="${task.id}" aria-current="${task.id === selectedId}">
+            <div class="attention-row-top"><span class="attention-reason">${helpers.escape(task.attention)}</span><span class="attention-age">${helpers.escape(task.attentionAge)}</span></div>
+            <div class="task-title">${helpers.escape(task.title)}</div>
+            <div class="task-row-top">${helpers.stateMarkup(task)} ${helpers.qualifierMarkup(task)}</div>
+            <div class="task-next"><strong>Next:</strong> ${helpers.escape(task.next)}</div>
+          </button>
+        </li>`).join('');
+      empty.hidden = visible.length !== 0;
+      const labels = {attention: 'tasks that need attention', all: 'all synthetic work', blocked: 'blocked or uncertain work', timing: 'overdue or stale work'};
+      activeScope.textContent = `Showing ${visible.length} ${labels[attentionFilter.value]}`;
+      list.querySelectorAll('[data-task-id]').forEach(button => button.addEventListener('click', () => {
+        selectedId = button.dataset.taskId;
+        render();
+        if (window.matchMedia('(max-width: 760px)').matches) chronology.scrollIntoView({block: 'start'});
+      }));
+      renderChronology(tasks.find(task => task.id === selectedId));
+    }
+
+    [attentionFilter, sortOrder].forEach(control => control.addEventListener('change', render));
+    document.querySelector('#reset').addEventListener('click', () => {
+      attentionFilter.value = 'attention';
+      sortOrder.value = 'priority';
+      selectedId = 'task_synth_107';
+      render();
+      attentionFilter.focus();
+    });
+    render();
+  </script>
+</body>
+</html>

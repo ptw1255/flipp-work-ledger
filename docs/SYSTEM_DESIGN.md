@@ -1,6 +1,6 @@
 # flipp Work Ledger system design
 
-Version 0.2 · 8 October 2026 · For review
+Version 0.3 · 8 October 2026 · For review
 
 ## Status and intent
 
@@ -55,6 +55,7 @@ Validate lease and renewal timing against real agent behavior during the connect
 | [C13](CONSTRAINTS.md#c13) | Revision-aware dependencies, provenance, joins, and fenced handoffs | Cycle, delegation, join, cancellation, and revocation tests |
 | [C14](CONSTRAINTS.md#c14) | Narrow command allowlist and stable receipts and errors | Contract snapshots, malformed/unknown version, receipt tests |
 | [C15](CONSTRAINTS.md#c15) | Proposed envelope, metrics, and owner-approved cap | Current pricing review, load test, and explicit approval |
+| [C16](CONSTRAINTS.md#c16) | Canonical view model, host catalog, bounded read-only actions, safe fallback | Projection, payload, keyboard, responsive, and truth-preservation tests |
 
 ## Context and component design
 
@@ -95,6 +96,7 @@ The proposed primitives follow current official documentation: remote MCP uses S
 | Event outbox and delivery | Subscriptions, event creation, signing references, retries, delivery status | Treating delivery as task progress, task authority, external action execution |
 | Ledger API and MCP adapter | Protocol validation, versioned command mapping, error contracts | Domain invariants, arbitrary network or machine-control tools |
 | Query and UI | Owner views, filters, derived status summaries, accessibility | Authoritative mutations or a second task database |
+| A2UI presentation adapter | Validated declarative surfaces from deterministic canonical view models | State inference, arbitrary code or styling, external actions, full client-data synchronization |
 
 Calls cross modules through typed commands, results, and domain events. Contracts carry a schema version. Unknown major versions fail closed. Compatible minor additions are optional fields. Migrations update a recorded schema version and must have a tested rollback or forward-repair plan before deployment.
 
@@ -177,6 +179,39 @@ The MCP server exposes ledger operations only. Each mutation request contains `c
 | `tasks.reconcile_readonly` | Append a post-cancel or uncertain observation without enabling work | Cannot claim, start, queue, or reopen a task |
 
 Queries return canonical version numbers and `observed_at` separately from response time. The UI shows evidence age, stale claims, due or missed checks, and delivery health explicitly. Read endpoints may use derived projections for speed, but a projection exposes its source sequence and cannot answer as current if it is behind the requested version.
+
+### Deterministic presentation model
+
+The query layer builds one bounded, deterministic `TaskPresentation` projection before any conventional template or generated UI adapter runs. It contains canonical state, explicit qualifiers, next action, scope summary, evidence references and observation times, page projection time, dependency summaries, and chronological audit items. It never contains source bodies, credentials, signed URLs, contact records, execution-environment discovery, or arbitrary instructions.
+
+The same task version and catalog version produce the same semantic view model. A renderer may change layout across viewport sizes, but it cannot relabel state, discard an active blocker, promote stale evidence, infer connectivity, or manufacture a completion. If a projection is stale, the view declares its source task version and projection time.
+
+The deterministic surface-selection and state-progression policy is defined in [Agent-driven UI experience](AGENT_UI_EXPERIENCE.md). It chooses among stable Needs attention, Progressing, and Waiting lenses from canonical fields; it does not give a model open-ended authority to decide urgency or rewrite the page structure.
+
+### Proposed A2UI adapter
+
+A2UI is a future presentation adapter, not part of canonical state, task execution, or the wake path. As of this review, the official project identifies v0.9.1 as current production and v1.0 as a candidate; the original announcement's v0.8 is legacy. Implementation must pin an exact supported protocol and catalog version after the connectivity and UI gates. [A2UI](https://a2ui.org/) · [v0.9.1 specification](https://a2ui.org/specification/v0.9.1-a2ui/)
+
+```mermaid
+flowchart LR
+    Canonical[(Canonical ledger)] --> Query[Authenticated query]
+    Query --> ViewModel[Deterministic bounded view model]
+    ViewModel --> Adapter[A2UI adapter]
+    Catalog[Host-controlled versioned catalog] --> Adapter
+    Adapter --> Validate[Schema + bounds validation]
+    Validate -->|valid| Renderer[Host renderer]
+    Validate -->|invalid or unknown| Fallback[Safe canonical text fallback]
+    Renderer -->|select / filter / sort / navigate only| Allowlist[Read-only action allowlist]
+    Allowlist --> Query
+```
+
+The catalog is owned by the host and mirrors the ledger design system. Initial components cover text, state labels, metadata rows, task lists, detail groups, timelines, filter controls, navigation, warnings, and safe fallback. Generated surfaces cannot import arbitrary HTML, JavaScript, CSS, external code, or ad hoc renderer functions. [A2UI catalogs](https://a2ui.org/concepts/catalogs/)
+
+Validate protocol and catalog versions, schema, component references, action names, data types, enum values, depth, total nodes, collection lengths, string lengths, and total payload bytes before rendering. Validate again in the client and degrade to the canonical text fallback on error. Do not permit a validation error to hide the task's state, blocker, uncertainty, or freshness.
+
+V1 actions are `select_task`, `set_filter`, `reset_filters`, `set_sort`, and `navigate_view`. Context includes only the minimum opaque IDs or enumerated values needed for that action. No action maps to claim, start, complete, cancel, retry, approve, revise scope, choose an environment, or execute work. Keep `sendDataModel: false`; the adapter never sends the entire client model back to the agent. [A2UI actions](https://a2ui.org/concepts/actions/)
+
+MCP Events continues to wake the assistant. After a wake or owner request, the client performs an authenticated canonical fetch and may render the resulting projection conventionally or through the adapter. A2UI delivery is not evidence of event receipt, task fetch, start, progress, or completion.
 
 Error responses are stable, typed, and non-secret: `validation_failed`, `unauthorized`, `version_conflict`, `idempotency_conflict`, `not_eligible`, `stale_claim`, `canceled`, `completion_not_satisfied`, `dependency_cycle`, and `temporarily_unavailable`. Retried requests return the recorded receipt, including the same stable error when applicable. Responses do not reveal another owner's resource existence, credential state, internal stack, or source content.
 
@@ -314,6 +349,14 @@ The cost posture is to minimize periodic work, batch due items, keep one canonic
 - **[C09](CONSTRAINTS.md#c09):** Reject callback redirects and private or local network destinations; test signatures, replay windows, key rotation, subscription expiry, and rate limits.
 - **[C02](CONSTRAINTS.md#c02):** Verify secrets and private source content are absent from records, logs, errors, events, public assets, and fixtures.
 - **[C03](CONSTRAINTS.md#c03), [C09](CONSTRAINTS.md#c09):** Inject instructions into task text and event data and verify they cannot change policy or tool scope.
+- **[C16](CONSTRAINTS.md#c16):** Fuzz A2UI payloads and enforce catalog/version, depth, count, length, enum, action, and byte bounds; invalid content must render a safe canonical fallback.
+- **[C02](CONSTRAINTS.md#c02), [C16](CONSTRAINTS.md#c16):** Prove UI payloads and action contexts contain no credentials, source bodies, signed URLs, private contacts, or full client data model.
+
+### Presentation verification
+
+- **[C16](CONSTRAINTS.md#c16):** Compare conventional and generated views against golden canonical projections for every state and qualifier, including blocked, expired claim, missed check, and uncertain canceled outcome.
+- **[C08](CONSTRAINTS.md#c08), [C16](CONSTRAINTS.md#c16):** Verify evidence observation time, page projection time, stale state, and “no subsequent task check recorded” remain distinct and visible.
+- **[C16](CONSTRAINTS.md#c16):** Test default, filtered, selected, reset, empty, fallback, desktop, and mobile states; verify keyboard order, visible focus, semantic headings, no clipping, and no hover-only evidence.
 
 ### Synthetic connectivity gate
 
