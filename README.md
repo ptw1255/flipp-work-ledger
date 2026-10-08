@@ -14,6 +14,8 @@ The [constraint acceptance matrix](docs/CONSTRAINTS.md) assigns stable IDs to th
 
 The proposed technical shape, contracts, recovery model, and unresolved implementation decisions are in the [system design](docs/SYSTEM_DESIGN.md).
 
+The [implementation plan and quality gates](docs/IMPLEMENTATION_PLAN.md) sequence the work from a real-client synthetic connectivity test through a separately approved private pilot. All implementation gates are currently NOT RUN.
+
 Two responsive, synthetic-data-only interface directions are available in [mockups](mockups/README.md). They are static design prototypes, not a working ledger or A2UI integration.
 
 The [agent-driven UI experience](docs/AGENT_UI_EXPERIENCE.md) defines how flipp selects what to surface while keeping layout, state semantics, and evidence bindings stable.
